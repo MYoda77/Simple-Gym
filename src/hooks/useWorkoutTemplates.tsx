@@ -8,14 +8,8 @@ import {
 } from "@/lib/pocketbase";
 import { useToast } from "@/hooks/use-toast";
 
-export interface WorkoutTemplate {
-  id: string;
-  name: string;
-  exercises: WorkoutExerciseData[];
-  duration: string;
-  created: string;
-  updated: string;
-}
+// Use PocketBase record type directly
+export type WorkoutTemplate = WorkoutRecord;
 
 export const useWorkoutTemplates = () => {
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
@@ -35,16 +29,8 @@ export const useWorkoutTemplates = () => {
       setLoading(true);
       setError(null);
       const workouts = await workoutsAPI.getAll();
-      setTemplates(
-        workouts.map((w) => ({
-          id: w.id,
-          name: w.name,
-          exercises: w.exercises,
-          duration: w.duration,
-          created: w.created,
-          updated: w.updated,
-        }))
-      );
+      // Use the full PocketBase records directly
+      setTemplates(workouts);
     } catch (err) {
       console.error("Failed to load workout templates:", err);
       const errorMessage =
@@ -89,20 +75,13 @@ export const useWorkoutTemplates = () => {
     try {
       const newWorkout = await workoutsAPI.create(name, exercises, duration);
       if (newWorkout) {
-        const template: WorkoutTemplate = {
-          id: newWorkout.id,
-          name: newWorkout.name,
-          exercises: newWorkout.exercises,
-          duration: newWorkout.duration,
-          created: newWorkout.created,
-          updated: newWorkout.updated,
-        };
-        setTemplates((prev) => [template, ...prev]);
+        // Use the PocketBase record directly
+        setTemplates((prev) => [newWorkout, ...prev]);
         toast({
           title: "Success",
           description: "Workout template created successfully",
         });
-        return template;
+        return newWorkout;
       }
       throw new Error("Failed to create workout template");
     } catch (error) {
@@ -131,22 +110,15 @@ export const useWorkoutTemplates = () => {
     try {
       const updatedWorkout = await workoutsAPI.update(id, updates);
       if (updatedWorkout) {
-        const updatedTemplate: WorkoutTemplate = {
-          id: updatedWorkout.id,
-          name: updatedWorkout.name,
-          exercises: updatedWorkout.exercises,
-          duration: updatedWorkout.duration,
-          created: updatedWorkout.created,
-          updated: updatedWorkout.updated,
-        };
+        // Use the PocketBase record directly
         setTemplates((prev) =>
-          prev.map((t) => (t.id === id ? updatedTemplate : t))
+          prev.map((t) => (t.id === id ? updatedWorkout : t))
         );
         toast({
           title: "Success",
           description: "Workout template updated successfully",
         });
-        return updatedTemplate;
+        return updatedWorkout;
       }
       throw new Error("Failed to update workout template");
     } catch (error) {

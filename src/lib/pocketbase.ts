@@ -18,6 +18,28 @@ interface BaseRecord {
   expand?: Record<string, unknown>;
 }
 
+// Generic API response types for better TypeScript support
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export interface PaginatedResponse<T> {
+  page: number;
+  perPage: number;
+  totalItems: number;
+  totalPages: number;
+  items: T[];
+}
+
+// Enhanced error types
+export interface PocketBaseError {
+  code: number;
+  message: string;
+  data?: Record<string, unknown>;
+}
+
 // Types for PocketBase records
 export interface CustomExerciseRecord extends Omit<Exercise, "id">, BaseRecord {
   user: string;
@@ -47,6 +69,7 @@ export interface ProgressRecord extends BaseRecord {
   user: string;
 }
 
+// NEW: Add WorkoutHistoryRecord type
 export interface WorkoutHistoryRecord extends BaseRecord {
   workoutName: string;
   duration: number;
@@ -56,6 +79,7 @@ export interface WorkoutHistoryRecord extends BaseRecord {
   user: string;
 }
 
+// NEW: Add ScheduleRecord type
 export interface ScheduleRecord extends BaseRecord {
   date: string;
   workoutName: string;
@@ -295,7 +319,7 @@ export const progressAPI = {
   },
 };
 
-// Workout History API
+// Workout History API - UPDATED with proper types
 export const historyAPI = {
   async getAll(): Promise<WorkoutHistoryRecord[]> {
     try {
@@ -335,7 +359,7 @@ export const historyAPI = {
   },
 };
 
-// Schedule API
+// Schedule API - UPDATED with proper types
 export const scheduleAPI = {
   async getAll(): Promise<ScheduleRecord[]> {
     try {
@@ -357,7 +381,7 @@ export const scheduleAPI = {
       // Check if already scheduled for this date
       const existing = await pb
         .collection("schedule")
-        .getFirstListItem(
+        .getFirstListItem<ScheduleRecord>(
           `user.id = "${pb.authStore.model?.id}" && date = "${date}"`
         )
         .catch(() => null);
@@ -389,7 +413,7 @@ export const scheduleAPI = {
     try {
       const existing = await pb
         .collection("schedule")
-        .getFirstListItem(
+        .getFirstListItem<ScheduleRecord>(
           `user.id = "${pb.authStore.model?.id}" && date = "${date}"`
         );
       await pb.collection("schedule").delete(existing.id);
@@ -403,35 +427,83 @@ export const scheduleAPI = {
 
 import type { RecordSubscription } from "pocketbase";
 
-export interface SubscriptionCallback {
+export interface SubscriptionCallback<T = Record<string, unknown>> {
   action: "create" | "update" | "delete";
-  record: Record<string, unknown>;
+  record: T;
 }
+
+// Type-specific subscription callback interfaces
+export type CustomExerciseSubscriptionCallback =
+  SubscriptionCallback<CustomExerciseRecord>;
+export type WorkoutSubscriptionCallback = SubscriptionCallback<WorkoutRecord>;
+export type ProgressSubscriptionCallback = SubscriptionCallback<ProgressRecord>;
+export type HistorySubscriptionCallback =
+  SubscriptionCallback<WorkoutHistoryRecord>;
+export type ScheduleSubscriptionCallback = SubscriptionCallback<ScheduleRecord>;
 
 // Real-time subscriptions (optional, for live updates)
 export const subscriptions = {
   async subscribeToCustomExercises(
-    callback: (data: SubscriptionCallback) => void
+    callback: (data: CustomExerciseSubscriptionCallback) => void
   ): Promise<() => void> {
     return pb
       .collection("custom_exercises")
-      .subscribe("*", (data: RecordSubscription<Record<string, unknown>>) => {
+      .subscribe("*", (data: RecordSubscription<CustomExerciseRecord>) => {
         callback({
           action: data.action as "create" | "update" | "delete",
-          record: data.record,
+          record: data.record as CustomExerciseRecord,
         });
       });
   },
 
   async subscribeToWorkouts(
-    callback: (data: SubscriptionCallback) => void
+    callback: (data: WorkoutSubscriptionCallback) => void
   ): Promise<() => void> {
     return pb
       .collection("workouts")
-      .subscribe("*", (data: RecordSubscription<Record<string, unknown>>) => {
+      .subscribe("*", (data: RecordSubscription<WorkoutRecord>) => {
         callback({
           action: data.action as "create" | "update" | "delete",
-          record: data.record,
+          record: data.record as WorkoutRecord,
+        });
+      });
+  },
+
+  async subscribeToProgress(
+    callback: (data: ProgressSubscriptionCallback) => void
+  ): Promise<() => void> {
+    return pb
+      .collection("progress")
+      .subscribe("*", (data: RecordSubscription<ProgressRecord>) => {
+        callback({
+          action: data.action as "create" | "update" | "delete",
+          record: data.record as ProgressRecord,
+        });
+      });
+  },
+
+  async subscribeToWorkoutHistory(
+    callback: (data: HistorySubscriptionCallback) => void
+  ): Promise<() => void> {
+    return pb
+      .collection("workout_history")
+      .subscribe("*", (data: RecordSubscription<WorkoutHistoryRecord>) => {
+        callback({
+          action: data.action as "create" | "update" | "delete",
+          record: data.record as WorkoutHistoryRecord,
+        });
+      });
+  },
+
+  async subscribeToSchedule(
+    callback: (data: ScheduleSubscriptionCallback) => void
+  ): Promise<() => void> {
+    return pb
+      .collection("schedule")
+      .subscribe("*", (data: RecordSubscription<ScheduleRecord>) => {
+        callback({
+          action: data.action as "create" | "update" | "delete",
+          record: data.record as ScheduleRecord,
         });
       });
   },

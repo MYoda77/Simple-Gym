@@ -3,14 +3,8 @@ import { useState, useEffect } from "react";
 import { scheduleAPI, auth, ScheduleRecord } from "@/lib/pocketbase";
 import { useToast } from "@/hooks/use-toast";
 
-export interface ScheduleEntry {
-  id: string;
-  date: string; // YYYY-MM-DD format
-  workoutName: string;
-  completed: boolean;
-  created: string;
-  updated: string;
-}
+// Use PocketBase record type directly
+export type ScheduleEntry = ScheduleRecord;
 
 export const useSchedule = () => {
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
@@ -30,16 +24,8 @@ export const useSchedule = () => {
       setLoading(true);
       setError(null);
       const scheduleData = await scheduleAPI.getAll();
-      setScheduleEntries(
-        scheduleData.map((s) => ({
-          id: s.id,
-          date: s.date,
-          workoutName: s.workoutName,
-          completed: s.completed || false,
-          created: s.created,
-          updated: s.updated,
-        }))
-      );
+      // Use the full PocketBase records directly
+      setScheduleEntries(scheduleData);
     } catch (err) {
       console.error("Failed to load schedule:", err);
       const errorMessage =
@@ -76,26 +62,18 @@ export const useSchedule = () => {
     try {
       const result = await scheduleAPI.schedule(date, workoutName);
       if (result) {
-        const scheduleEntry: ScheduleEntry = {
-          id: result.id,
-          date: result.date,
-          workoutName: result.workoutName,
-          completed: result.completed || false,
-          created: result.created,
-          updated: result.updated,
-        };
-
+        // Use the PocketBase record directly
         // Update or add the entry
         setScheduleEntries((prev) => {
           const existingIndex = prev.findIndex((s) => s.date === date);
           if (existingIndex >= 0) {
             // Update existing entry
             const updated = [...prev];
-            updated[existingIndex] = scheduleEntry;
+            updated[existingIndex] = result;
             return updated;
           } else {
             // Add new entry
-            return [...prev, scheduleEntry];
+            return [...prev, result];
           }
         });
 
@@ -103,7 +81,7 @@ export const useSchedule = () => {
           title: "Success",
           description: `Workout scheduled for ${formatDate(date)}`,
         });
-        return scheduleEntry;
+        return result;
       }
       throw new Error("Failed to schedule workout");
     } catch (error) {

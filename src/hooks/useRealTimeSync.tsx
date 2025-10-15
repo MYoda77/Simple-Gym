@@ -1,12 +1,12 @@
 // src/hooks/useRealTimeSync.tsx
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { subscriptions, auth } from "@/lib/pocketbase";
 import { useToast } from "@/hooks/use-toast";
 
 export interface RealtimeEvent {
   collection: string;
   action: "create" | "update" | "delete";
-  record: Record<string, unknown>;
+  record: unknown;
 }
 
 export interface SyncCallbacks {
@@ -21,8 +21,27 @@ export const useRealTimeSync = (callbacks: SyncCallbacks = {}) => {
   const { toast } = useToast();
   const unsubscribeFunctions = useRef<(() => void)[]>([]);
   const isConnected = useRef(false);
+  const hasShownConnectedToast = useRef(false); // Prevent toast spam
+  const callbacksRef = useRef(callbacks); // Store callbacks in ref to avoid dependency issues
 
-  const setupSubscriptions = useCallback(async () => {
+  // Update callbacks ref when they change
+  useEffect(() => {
+    callbacksRef.current = callbacks;
+  }, [callbacks]);
+
+  const cleanup = () => {
+    unsubscribeFunctions.current.forEach((unsubscribe) => {
+      try {
+        subscriptions.unsubscribe(unsubscribe);
+      } catch (error) {
+        console.warn("Failed to unsubscribe:", error);
+      }
+    });
+    unsubscribeFunctions.current = [];
+    isConnected.current = false;
+  };
+
+  const setupSubscriptions = async () => {
     if (!auth.isLoggedIn) return;
 
     try {
@@ -32,7 +51,7 @@ export const useRealTimeSync = (callbacks: SyncCallbacks = {}) => {
       const unsubscribers: (() => void)[] = [];
 
       // Subscribe to custom exercises changes
-      if (callbacks.onCustomExerciseChange) {
+      if (callbacksRef.current.onCustomExerciseChange) {
         const unsubscribe = await subscriptions.subscribeToCustomExercises(
           (data) => {
             const event: RealtimeEvent = {
@@ -40,7 +59,7 @@ export const useRealTimeSync = (callbacks: SyncCallbacks = {}) => {
               action: data.action,
               record: data.record,
             };
-            callbacks.onCustomExerciseChange!(event);
+            callbacksRef.current.onCustomExerciseChange?.(event);
 
             // Show toast notification for changes from other devices
             if (data.action === "create") {
@@ -66,14 +85,14 @@ export const useRealTimeSync = (callbacks: SyncCallbacks = {}) => {
       }
 
       // Subscribe to workout template changes
-      if (callbacks.onWorkoutChange) {
+      if (callbacksRef.current.onWorkoutChange) {
         const unsubscribe = await subscriptions.subscribeToWorkouts((data) => {
           const event: RealtimeEvent = {
             collection: "workouts",
             action: data.action,
             record: data.record,
           };
-          callbacks.onWorkoutChange!(event);
+          callbacksRef.current.onWorkoutChange?.(event);
 
           // Show toast notification
           if (data.action === "create") {
@@ -97,37 +116,17 @@ export const useRealTimeSync = (callbacks: SyncCallbacks = {}) => {
         unsubscribers.push(unsubscribe);
       }
 
-      // You could add more subscriptions for progress and schedule
-      // Example for progress (would need to add to pocketbase.ts subscriptions):
-      /*
-      if (callbacks.onProgressChange) {
-        const unsubscribe = await subscriptions.subscribeToProgress((data) => {
-          const event: RealtimeEvent = {
-            collection: 'progress',
-            action: data.action,
-            record: data.record
-          };
-          callbacks.onProgressChange!(event);
-          
-          if (data.action === 'create') {
-            toast({
-              title: "Progress Updated",
-              description: "New progress entry added from another device"
-            });
-          }
-        });
-        unsubscribers.push(unsubscribe);
-      }
-      */
-
       unsubscribeFunctions.current = unsubscribers;
       isConnected.current = true;
 
-      // Show connection success
-      toast({
-        title: "Real-time Sync Connected",
-        description: "Changes will sync across your devices",
-      });
+      // Only show connection toast ONCE per session
+      if (!hasShownConnectedToast.current) {
+        hasShownConnectedToast.current = true;
+        toast({
+          title: "Real-time Sync Active",
+          description: "Changes will sync across your devices",
+        });
+      }
     } catch (error) {
       console.error("Failed to setup real-time subscriptions:", error);
       const errorMessage =
@@ -135,8 +134,8 @@ export const useRealTimeSync = (callbacks: SyncCallbacks = {}) => {
           ? error.message
           : "Failed to connect to real-time sync";
 
-      if (callbacks.onError) {
-        callbacks.onError(errorMessage);
+      if (callbacksRef.current.onError) {
+        callbacksRef.current.onError(errorMessage);
       }
 
       toast({
@@ -145,18 +144,6 @@ export const useRealTimeSync = (callbacks: SyncCallbacks = {}) => {
         variant: "destructive",
       });
     }
-  }, [callbacks, toast]);
-
-  const cleanup = () => {
-    unsubscribeFunctions.current.forEach((unsubscribe) => {
-      try {
-        subscriptions.unsubscribe(unsubscribe);
-      } catch (error) {
-        console.warn("Failed to unsubscribe:", error);
-      }
-    });
-    unsubscribeFunctions.current = [];
-    isConnected.current = false;
   };
 
   const reconnect = async () => {
@@ -183,14 +170,8 @@ export const useRealTimeSync = (callbacks: SyncCallbacks = {}) => {
       unsubscribeAuth();
       cleanup();
     };
-  }, [
-    callbacks.onCustomExerciseChange,
-    callbacks.onWorkoutChange,
-    callbacks.onProgressChange,
-    callbacks.onScheduleChange,
-    callbacks.onError,
-    setupSubscriptions,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // FIXED: Empty dependency array - only run once on mount
 
   return {
     isConnected: isConnected.current,

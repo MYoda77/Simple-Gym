@@ -9,25 +9,9 @@ import {
 } from "@/lib/pocketbase";
 import { useToast } from "@/hooks/use-toast";
 
-export interface ProgressEntry {
-  id: string;
-  weight: number;
-  bodyFat?: number;
-  date: string;
-  notes?: string;
-  created: string;
-  updated: string;
-}
-
-export interface WorkoutHistoryEntry {
-  id: string;
-  workoutName: string;
-  duration: number;
-  exercises: number;
-  totalSets: number;
-  completedAt: string;
-  created: string;
-}
+// Use PocketBase record types directly instead of duplicating them
+export type ProgressEntry = ProgressRecord;
+export type WorkoutHistoryEntry = WorkoutHistoryRecord;
 
 export interface ProgressStats {
   totalWorkouts: number;
@@ -68,29 +52,9 @@ export const useProgressTracking = () => {
         historyAPI.getAll(),
       ]);
 
-      setProgressEntries(
-        progressData.map((p) => ({
-          id: p.id,
-          weight: p.weight,
-          bodyFat: p.bodyFat,
-          date: p.date,
-          notes: p.notes,
-          created: p.created,
-          updated: p.updated,
-        }))
-      );
-
-      setWorkoutHistory(
-        historyData.map((h) => ({
-          id: h.id,
-          workoutName: h.workoutName,
-          duration: h.duration,
-          exercises: h.exercises,
-          totalSets: h.totalSets,
-          completedAt: h.completedAt,
-          created: h.created,
-        }))
-      );
+      // Use the full PocketBase records directly
+      setProgressEntries(progressData);
+      setWorkoutHistory(historyData);
     } catch (err) {
       console.error("Failed to load progress data:", err);
       const errorMessage =
@@ -133,21 +97,13 @@ export const useProgressTracking = () => {
     try {
       const newEntry = await progressAPI.log(weight, bodyFat, notes, date);
       if (newEntry) {
-        const progressEntry: ProgressEntry = {
-          id: newEntry.id,
-          weight: newEntry.weight,
-          bodyFat: newEntry.bodyFat,
-          date: newEntry.date,
-          notes: newEntry.notes,
-          created: newEntry.created,
-          updated: newEntry.updated,
-        };
-        setProgressEntries((prev) => [progressEntry, ...prev]);
+        // Use the PocketBase record directly
+        setProgressEntries((prev) => [newEntry, ...prev]);
         toast({
           title: "Success",
           description: "Progress logged successfully",
         });
-        return progressEntry;
+        return newEntry;
       }
       throw new Error("Failed to log progress");
     } catch (error) {
@@ -180,21 +136,13 @@ export const useProgressTracking = () => {
         totalSets
       );
       if (newEntry) {
-        const historyEntry: WorkoutHistoryEntry = {
-          id: newEntry.id,
-          workoutName,
-          duration,
-          exercises: exercisesCount,
-          totalSets,
-          completedAt: newEntry.completedAt,
-          created: newEntry.created,
-        };
-        setWorkoutHistory((prev) => [historyEntry, ...prev]);
+        // Use the PocketBase record directly
+        setWorkoutHistory((prev) => [newEntry, ...prev]);
         toast({
           title: "Success",
           description: "Workout logged successfully",
         });
-        return historyEntry;
+        return newEntry;
       }
       throw new Error("Failed to log workout");
     } catch (error) {

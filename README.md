@@ -1,22 +1,21 @@
-# Welcome to your Lovable project
+# SimpleGym - Personal Fitness Tracker
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/7939c7a2-2fdd-4463-9002-7b086378b388
+**Developer**: Coast (@coast_dev)
+**Description**: A modern gym management and workout tracking application built with React, TypeScript, and PocketBase.
 
 ## How can I edit this code?
 
 There are several ways of editing your application.
 
-**Use Lovable**
+**Local Development**
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/7939c7a2-2fdd-4463-9002-7b086378b388) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
+Clone this repository and work locally using your preferred IDE.
 
 **Use your preferred IDE**
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+If you want to work locally using your own IDE, you can clone this repo and push changes.
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
@@ -62,12 +61,18 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/7939c7a2-2fdd-4463-9002-7b086378b388) and click on Share -> Publish.
+This project can be deployed to various platforms:
 
-## Can I connect a custom domain to my Lovable project?
+- **Vercel**: Connect your GitHub repository and deploy automatically
+- **Netlify**: Deploy from GitHub with continuous deployment
+- **Cloudflare Pages**: Fast deployment with edge computing benefits
+- **Traditional hosting**: Build with `npm run build` and upload dist folder
 
-Yes, you can!
+## Features
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- 💪 Exercise database with custom exercise creation
+- 📊 Workout tracking and progress monitoring
+- 📅 Workout scheduling and calendar
+- 📱 Responsive design for mobile and desktop
+- 🔐 User authentication with PocketBase
+- 💾 Offline support with localStorage fallback
