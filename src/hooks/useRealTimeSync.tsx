@@ -62,15 +62,17 @@ export const useRealTimeSync = (callbacks: SyncCallbacks = {}) => {
             callbacksRef.current.onCustomExerciseChange?.(event);
 
             // Show toast notification for changes from other devices
+            const recordName =
+              (data.record as { name?: string })?.name || "Exercise";
             if (data.action === "create") {
               toast({
                 title: "New Custom Exercise",
-                description: `"${data.record.name}" was added from another device`,
+                description: `"${recordName}" was added from another device`,
               });
             } else if (data.action === "update") {
               toast({
                 title: "Exercise Updated",
-                description: `"${data.record.name}" was updated from another device`,
+                description: `"${recordName}" was updated from another device`,
               });
             } else if (data.action === "delete") {
               toast({
@@ -95,15 +97,17 @@ export const useRealTimeSync = (callbacks: SyncCallbacks = {}) => {
           callbacksRef.current.onWorkoutChange?.(event);
 
           // Show toast notification
+          const workoutName =
+            (data.record as { name?: string })?.name || "Workout";
           if (data.action === "create") {
             toast({
               title: "New Workout Template",
-              description: `"${data.record.name}" was created from another device`,
+              description: `"${workoutName}" was created from another device`,
             });
           } else if (data.action === "update") {
             toast({
               title: "Workout Updated",
-              description: `"${data.record.name}" was updated from another device`,
+              description: `"${workoutName}" was updated from another device`,
             });
           } else if (data.action === "delete") {
             toast({
