@@ -1,8 +1,9 @@
-// src/components/auth/AuthDialog.tsx
-import React, { useState } from "react";
+import { useState } from "react";
+import { useAuth } from "@/lib/useAuth";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -10,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthDialogProps {
@@ -18,222 +18,153 @@ interface AuthDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export const AuthDialog: React.FC<AuthDialogProps> = ({
-  open,
-  onOpenChange,
-}) => {
-  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [registerForm, setRegisterForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-  const { login, register, loading } = useAuth();
+export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
+  const { signIn, signUp } = useAuth();
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const result = await login(loginForm.email, loginForm.password);
+  // Sign In State
+  const [signInEmail, setSignInEmail] = useState("");
+  const [signInPassword, setSignInPassword] = useState("");
+  const [signInLoading, setSignInLoading] = useState(false);
 
-    if (result.success) {
-      toast({ title: "Welcome back!", description: "Successfully logged in." });
-      onOpenChange(false);
-      setLoginForm({ email: "", password: "" });
-    } else {
+  // Sign Up State
+  const [signUpEmail, setSignUpEmail] = useState("");
+  const [signUpPassword, setSignUpPassword] = useState("");
+  const [signUpFullName, setSignUpFullName] = useState("");
+  const [signUpLoading, setSignUpLoading] = useState(false);
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignInLoading(true);
+
+    try {
+      await signIn(signInEmail, signInPassword);
       toast({
-        title: "Login failed",
-        description: result.error,
+        title: "Success",
+        description: "Signed in successfully!",
+      });
+      onOpenChange(false);
+      setSignInEmail("");
+      setSignInPassword("");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to sign in",
         variant: "destructive",
       });
+    } finally {
+      setSignInLoading(false);
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSignUpLoading(true);
 
-    if (registerForm.password !== registerForm.confirmPassword) {
+    try {
+      await signUp(signUpEmail, signUpPassword, signUpFullName);
       toast({
-        title: "Passwords don't match",
-        description: "Please make sure both passwords are identical.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (registerForm.password.length < 8) {
-      toast({
-        title: "Password too short",
-        description: "Password must be at least 8 characters long.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const result = await register(
-      registerForm.email,
-      registerForm.password,
-      registerForm.name
-    );
-
-    if (result.success) {
-      toast({
-        title: "Welcome!",
-        description: "Account created successfully.",
+        title: "Success",
+        description: "Account created! Check your email to confirm.",
       });
       onOpenChange(false);
-      setRegisterForm({
-        name: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-      });
-    } else {
+      setSignUpEmail("");
+      setSignUpPassword("");
+      setSignUpFullName("");
+    } catch (error: any) {
       toast({
-        title: "Registration failed",
-        description: result.error,
+        title: "Error",
+        description: error.message || "Failed to create account",
         variant: "destructive",
       });
+    } finally {
+      setSignUpLoading(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md glass border-border/50">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-primary">
-            Welcome to Simple Gym
-          </DialogTitle>
+          <DialogTitle>Welcome to Simple Gym</DialogTitle>
+          <DialogDescription>
+            Sign in to your account or create a new one to get started.
+          </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="login" className="w-full">
+        <Tabs defaultValue="signin" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="register">Sign Up</TabsTrigger>
+            <TabsTrigger value="signin">Sign In</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="login" className="space-y-4">
-            <form onSubmit={handleLogin} className="space-y-4">
+          <TabsContent value="signin">
+            <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
+                <Label htmlFor="signin-email">Email</Label>
                 <Input
-                  id="login-email"
+                  id="signin-email"
                   type="email"
-                  placeholder="your@email.com"
-                  value={loginForm.email}
-                  onChange={(e) =>
-                    setLoginForm((prev) => ({ ...prev, email: e.target.value }))
-                  }
-                  className="glass"
+                  placeholder="you@example.com"
+                  value={signInEmail}
+                  onChange={(e) => setSignInEmail(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="login-password">Password</Label>
+                <Label htmlFor="signin-password">Password</Label>
                 <Input
-                  id="login-password"
+                  id="signin-password"
                   type="password"
-                  placeholder="Enter your password"
-                  value={loginForm.password}
-                  onChange={(e) =>
-                    setLoginForm((prev) => ({
-                      ...prev,
-                      password: e.target.value,
-                    }))
-                  }
-                  className="glass"
+                  placeholder="••••••••"
+                  value={signInPassword}
+                  onChange={(e) => setSignInPassword(e.target.value)}
                   required
                 />
               </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading}
-                variant="hero"
-              >
-                {loading ? "Logging in..." : "Login"}
+              <Button type="submit" className="w-full" disabled={signInLoading}>
+                {signInLoading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
           </TabsContent>
 
-          <TabsContent value="register" className="space-y-4">
-            <form onSubmit={handleRegister} className="space-y-4">
+          <TabsContent value="signup">
+            <form onSubmit={handleSignUp} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="register-name">Name</Label>
+                <Label htmlFor="signup-name">Full Name</Label>
                 <Input
-                  id="register-name"
+                  id="signup-name"
                   type="text"
-                  placeholder="Your name"
-                  value={registerForm.name}
-                  onChange={(e) =>
-                    setRegisterForm((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
-                  className="glass"
-                  required
+                  placeholder="John Doe"
+                  value={signUpFullName}
+                  onChange={(e) => setSignUpFullName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="register-email">Email</Label>
+                <Label htmlFor="signup-email">Email</Label>
                 <Input
-                  id="register-email"
+                  id="signup-email"
                   type="email"
-                  placeholder="your@email.com"
-                  value={registerForm.email}
-                  onChange={(e) =>
-                    setRegisterForm((prev) => ({
-                      ...prev,
-                      email: e.target.value,
-                    }))
-                  }
-                  className="glass"
+                  placeholder="you@example.com"
+                  value={signUpEmail}
+                  onChange={(e) => setSignUpEmail(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="register-password">Password</Label>
+                <Label htmlFor="signup-password">Password</Label>
                 <Input
-                  id="register-password"
+                  id="signup-password"
                   type="password"
-                  placeholder="Create a password (min 8 characters)"
-                  value={registerForm.password}
-                  onChange={(e) =>
-                    setRegisterForm((prev) => ({
-                      ...prev,
-                      password: e.target.value,
-                    }))
-                  }
-                  className="glass"
+                  placeholder="••••••••"
+                  value={signUpPassword}
+                  onChange={(e) => setSignUpPassword(e.target.value)}
                   required
-                  minLength={8}
+                  minLength={6}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="register-confirm">Confirm Password</Label>
-                <Input
-                  id="register-confirm"
-                  type="password"
-                  placeholder="Confirm your password"
-                  value={registerForm.confirmPassword}
-                  onChange={(e) =>
-                    setRegisterForm((prev) => ({
-                      ...prev,
-                      confirmPassword: e.target.value,
-                    }))
-                  }
-                  className="glass"
-                  required
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading}
-                variant="hero"
-              >
-                {loading ? "Creating Account..." : "Sign Up"}
+              <Button type="submit" className="w-full" disabled={signUpLoading}>
+                {signUpLoading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
           </TabsContent>
@@ -241,4 +172,4 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
       </DialogContent>
     </Dialog>
   );
-};
+}

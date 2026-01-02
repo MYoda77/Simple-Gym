@@ -19,15 +19,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Search, Check } from "lucide-react";
 import { Exercise } from "@/types/gym";
-import { CustomExerciseRecord } from "@/lib/pocketbase";
+import { CustomExercise } from "@/lib/supabase-config";
 
-interface CustomExercise extends Exercise {
+interface CustomExerciseExtended extends Exercise {
   isCustom: true;
   createdAt: string;
 }
 
-// Type alias for the actual data structure from PocketBase
-type CustomExerciseData = CustomExerciseRecord;
+// Type alias for custom exercises from Supabase
+type CustomExerciseData = CustomExercise;
 
 interface CreateWorkoutDialogProps {
   open: boolean;
@@ -75,7 +75,13 @@ const CreateWorkoutDialog: React.FC<CreateWorkoutDialogProps> = ({
   // Combine preset and custom exercises
   const allExercises = useMemo(() => {
     const presetExercises = Object.values(exerciseDatabase).flat();
-    return [...presetExercises, ...customExercises];
+    // Map custom exercises to match Exercise interface
+    const mappedCustomExercises = customExercises.map((ex) => ({
+      ...ex,
+      primaryMuscle: ex.primary_muscle, // Map Supabase field to Exercise field
+      isCustom: true, // ← ADD THIS LINE
+    }));
+    return [...presetExercises, ...mappedCustomExercises];
   }, [customExercises]);
 
   // Get all available categories and equipment types

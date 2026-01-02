@@ -40,12 +40,14 @@ import {
   getDifficultyColor,
   getComplexityColor,
 } from "@/utils/workoutUtils";
-import { useCustomExercises } from "@/hooks/useCustomExercises";
-import { useWorkoutTemplates } from "@/hooks/useWorkoutTemplates";
-import { useProgressTracking } from "@/hooks/useProgressTracking";
-import { useSchedule } from "@/hooks/useSchedule";
+import { useCustomExercises } from "@/hooks/useCustomExercises-COMPATIBLE";
+import { useWorkoutTemplates } from "@/hooks/useWorkoutTemplates-COMPATIBLE";
+import { useProgressTracking } from "@/hooks/useProgressTracking-COMPATIBLE";
+import { useSchedule } from "@/hooks/useSchedule-COMPATIBLE";
 import { useRealTimeSync } from "@/hooks/useRealTimeSync";
-import { auth } from "@/lib/pocketbase";
+import { useAuth } from "@/lib/useAuth";
+import { CustomExercise, supabase } from "@/lib/supabase-config";
+import CalendarContextMenu from "@/components/gym/CalendarContextmenu";
 import Dashboard from "@/components/gym/Dashboard";
 import Header from "@/components/gym/Header";
 import ActiveWorkoutView from "@/components/gym/ActiveWorkoutView";
@@ -55,6 +57,9 @@ import WorkoutSetupDialog from "@/components/gym/WorkoutSetupDialog";
 import WeeklySchedule from "@/components/gym/WeeklySchedule";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import RestDayConfigDialog, {
+  RestDayConfig,
+} from "@/components/gym/RestDayConfigDialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -99,8 +104,7 @@ import { cn } from "@/lib/utils";
 
 type SetState<T> = React.Dispatch<React.SetStateAction<T>>;
 
-type MixedExercise = Exercise | import("@/lib/pocketbase").CustomExerciseRecord;
-
+type MixedExercise = Exercise | CustomExercise;
 interface ExerciseDatabaseProps {
   searchTerm: string;
   setSearchTerm: SetState<string>;
@@ -447,6 +451,7 @@ ExerciseDatabase.displayName = "ExerciseDatabase";
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const {
     customExercises,
     addCustomExercise,
@@ -495,8 +500,25 @@ const Index = () => {
     }
   }, [workoutTemplates.length, workoutsLoading, initializeDefaultTemplates]);
 
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    dateKey: string;
+    workoutName: string | undefined;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    dateKey: "",
+    workoutName: undefined,
+  });
+
   const [currentView, setCurrentView] = useState<ViewType>("dashboard");
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [restDayDialogOpen, setRestDayDialogOpen] = useState(false);
+  const [restDayDate, setRestDayDate] = useState<Date>(new Date());
   const [activeWorkout, setActiveWorkout] = useState<string | null>(null);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentSetIndex, setCurrentSetIndex] = useState(0);
@@ -514,7 +536,9 @@ const Index = () => {
     const result: Record<string, Workout> = {};
     workoutTemplates.forEach((template) => {
       result[template.name] = {
-        duration: template.duration,
+        duration: template.duration_minutes
+          ? `${template.duration_minutes} mins`
+          : "45-60 mins",
         exercises: template.exercises,
       };
     });
@@ -525,7 +549,16 @@ const Index = () => {
   const schedule = useMemo(() => {
     const result: Record<string, string> = {};
     scheduleEntries.forEach((entry) => {
-      result[entry.date] = entry.workoutName;
+      const dateKey = entry.scheduled_date;
+
+      // If no workout_id, it's a Rest Day
+      if (!entry.workout_id) {
+        result[dateKey] = "Rest Day";
+      } else {
+        // Regular workout - get name from joined workout data
+        const workoutName = entry.workouts?.name || "Unknown Workout";
+        result[dateKey] = workoutName;
+      }
     });
     return result;
   }, [scheduleEntries]);
@@ -535,11 +568,9 @@ const Index = () => {
   // Use workout history from the hook (convert format if needed)
   const workoutHistory = useMemo(() => {
     return hookWorkoutHistory.map((entry) => ({
-      date: entry.completedAt.split("T")[0], // Convert to date format
-      name: entry.workoutName,
-      duration: entry.duration,
-      exercises: entry.exercises,
-      totalSets: entry.totalSets,
+      date: entry.date,
+      weight: entry.weight || 0,
+      bodyFat: entry.body_fat_percentage || 0,
     }));
   }, [hookWorkoutHistory]);
   const [personalRecords, setPersonalRecords] = useState<
@@ -577,11 +608,13 @@ const Index = () => {
 
   // Use progress data from the hook (convert format if needed)
   const progressData = useMemo(() => {
-    return progressEntries.map((entry) => ({
-      date: entry.date,
-      weight: entry.weight,
-      bodyFat: entry.bodyFat || 0,
-    }));
+    return progressEntries
+      .filter((entry) => entry.weight !== undefined)
+      .map((entry) => ({
+        date: entry.date,
+        weight: entry.weight as number,
+        bodyFat: entry.bodyFat || 0,
+      }));
   }, [progressEntries]);
 
   // Combine preset and custom exercises
@@ -748,12 +781,7 @@ const Index = () => {
       ),
     };
     // Log workout using the hook
-    logWorkout(
-      workoutRecord.name,
-      workoutRecord.duration,
-      workoutRecord.exercises,
-      workoutRecord.totalSets
-    );
+    // Workout tracking now handled by workout sessions
 
     // Note: Workout progress tracking removed - only tracking weight/BMI in Progress page
 
@@ -900,12 +928,11 @@ const Index = () => {
           for (const entry of data.progressData) {
             if (entry.weight && entry.date) {
               try {
-                await logProgress(
-                  entry.weight,
-                  entry.bodyFat,
-                  undefined, // notes
-                  entry.date
-                );
+                await logProgress({
+                  date: entry.date,
+                  weight: entry.weight,
+                  body_fat_percentage: entry.bodyFat,
+                });
                 importedCount++;
               } catch (error) {
                 console.error(
@@ -922,12 +949,7 @@ const Index = () => {
           for (const entry of data.workoutHistory) {
             if (entry.name && entry.duration) {
               try {
-                await logWorkout(
-                  entry.name,
-                  entry.duration,
-                  entry.exercises || 0,
-                  entry.totalSets || 0
-                );
+                // Workout tracking now handled by workout sessions
                 importedCount++;
               } catch (error) {
                 console.error(
@@ -1303,16 +1325,142 @@ const Index = () => {
 
   const assignWorkout = async (workoutName: string) => {
     const dateKey = formatDateKey(selectedDate);
+
     try {
-      await scheduleWorkout(dateKey, workoutName);
+      // Handle Rest Day (no workout template needed)
+      // Handle Rest Day - Open configuration dialog
+      if (workoutName === "Rest Day") {
+        setRestDayDate(selectedDate);
+        setRestDayDialogOpen(true);
+        return; // Dialog will handle the actual scheduling
+      }
+
+      // Handle regular workouts
+      const workoutTemplate = workoutTemplates.find(
+        (template) => template.name === workoutName
+      );
+
+      if (!workoutTemplate) {
+        toast({
+          title: "Error",
+          description: `Workout "${workoutName}" not found`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await scheduleWorkout(workoutTemplate.id, dateKey);
+
       toast({
         title: "Workout Scheduled",
         description: `${workoutName} has been scheduled for ${selectedDate.toLocaleDateString()}`,
       });
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error("Failed to schedule:", error);
       toast({
-        title: "Error Scheduling Workout",
-        description: "Failed to schedule workout. Please try again.",
+        title: "Error Scheduling",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to schedule. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCalendarRightClick = (
+    e: React.MouseEvent,
+    date: Date,
+    scheduledWorkout?: string
+  ) => {
+    e.preventDefault();
+    if (!scheduledWorkout) return;
+
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      dateKey: formatDateKey(date),
+      workoutName: scheduledWorkout,
+    });
+  };
+
+  const handleUnscheduleFromContext = async () => {
+    if (!contextMenu.dateKey) return;
+
+    try {
+      await unscheduleWorkout(contextMenu.dateKey);
+      toast({
+        title: "Workout Removed",
+        description: "Workout removed from schedule.",
+      });
+    } catch (error) {
+      console.error("Failed to remove workout:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove workout.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const closeContextMenu = () => {
+    setContextMenu({
+      visible: false,
+      x: 0,
+      y: 0,
+      dateKey: "",
+      workoutName: undefined,
+    });
+  };
+
+  const handleRestDaySchedule = async (config: RestDayConfig) => {
+    const dateKey = formatDateKey(restDayDate);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Build notes from config
+      let notesText = "";
+      if (config.activities && config.activities.length > 0) {
+        notesText += "Activities: " + config.activities.join(", ");
+      }
+      if (config.notes) {
+        notesText += (notesText ? "\n" : "") + config.notes;
+      }
+      if (!notesText) {
+        notesText = "Recovery and stretching";
+      }
+
+      // Create schedule entry
+      const { error } = await supabase.from("schedule").insert({
+        scheduled_date: dateKey,
+        workout_id: null,
+        notes: notesText,
+        rest_day_type: config.type,
+        user_id: user.id,
+        completed: false,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Rest Day Scheduled",
+        description: `${
+          config.type.charAt(0).toUpperCase() + config.type.slice(1)
+        } rest day scheduled`,
+      });
+    } catch (error: unknown) {
+      console.error("Failed to schedule rest day:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to schedule rest day",
         variant: "destructive",
       });
     }
@@ -1451,6 +1599,9 @@ const Index = () => {
                   key={index}
                   variant="ghost"
                   onClick={() => handleDateSelect(day)}
+                  onContextMenu={(e) =>
+                    handleCalendarRightClick(e, day, workout)
+                  }
                   className={`
                     h-20 p-2 rounded-lg
                     border flex flex-col items-center justify-center transition-all hover:shadow-card relative
@@ -1754,7 +1905,7 @@ const Index = () => {
         await updateTemplate(existingTemplate.id, {
           name: newWorkoutName,
           exercises: selectedExercises,
-          duration: "45-60 mins",
+          duration_minutes: 50,
         });
 
         // If name changed, update schedule entries
@@ -1819,7 +1970,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Header
         currentView={currentView}
         setCurrentView={setCurrentView}
@@ -1834,7 +1985,7 @@ const Index = () => {
       <main className="max-w-7xl mx-auto px-4 py-8">
         {currentView === "dashboard" && (
           <Dashboard
-            workoutHistory={workoutHistory}
+            workoutHistory={[]} // ✅ Empty array until workout sessions implemented
             personalRecords={personalRecords}
             progressData={progressData}
           />
@@ -1964,10 +2115,22 @@ const Index = () => {
         onOpenChange={setIsCreateExerciseOpen}
         onCreateExercise={async (exerciseData) => {
           try {
-            await addCustomExercise(exerciseData);
+            // Transform camelCase to snake_case for Supabase
+            const customExerciseData = {
+              name: exerciseData.name,
+              primary_muscle: exerciseData.primaryMuscle,
+              equipment: exerciseData.equipment,
+              complexity: exerciseData.complexity,
+              difficulty: exerciseData.difficulty, // Map complexity to difficulty
+              instructions: exerciseData.instructions,
+              movement_pattern: exerciseData.movementPattern,
+              requires_spotter: exerciseData.requiresSpotter,
+              prerequisites: exerciseData.prerequisites,
+            };
+            await addCustomExercise(customExerciseData);
             setIsCreateExerciseOpen(false);
 
-            if (auth.isLoggedIn) {
+            if (user) {
               toast({
                 title: "Exercise Created!",
                 description: `${exerciseData.name} has been saved to your account.`,
@@ -2107,6 +2270,23 @@ const Index = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Rest Day Dialog */}
+      <RestDayConfigDialog
+        open={restDayDialogOpen}
+        onOpenChange={setRestDayDialogOpen}
+        onSchedule={handleRestDaySchedule}
+        selectedDate={restDayDate}
+      />
+
+      {/* Calendar Context Menu */}
+      <CalendarContextMenu
+        visible={contextMenu.visible}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        onClose={closeContextMenu}
+        onUnschedule={handleUnscheduleFromContext}
+        workoutName={contextMenu.workoutName}
+      />
     </div>
   );
 };

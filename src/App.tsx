@@ -1,32 +1,45 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Progress from "./pages/Progress";
-import { AuthWrapper } from "./components/auth/AuthWrapper";
+import { AuthProvider } from "@/lib/useAuth";
+import { AuthWrapper } from "@/components/auth/AuthWrapper";
+import { Toaster } from "@/components/ui/toaster";
+import Index from "@/pages/Index";
+import Progress from "@/pages/Progress";
+import NotFound from "@/pages/NotFound";
+import "./App.css";
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
+function App() {
+  return (
+    <AuthProvider>
       <BrowserRouter>
-        <AuthWrapper>
+        <div className="min-h-screen bg-background">
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/progress" element={<Progress />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* Wrap Index with AuthWrapper to require login */}
+            <Route
+              path="/"
+              element={
+                <AuthWrapper>
+                  <Index />
+                </AuthWrapper>
+              }
+            />
+
+            {/* Progress page also protected */}
+            <Route
+              path="/progress"
+              element={
+                <AuthWrapper>
+                  <Progress />
+                </AuthWrapper>
+              }
+            />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </AuthWrapper>
+          <Toaster />
+        </div>
       </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </AuthProvider>
+  );
+}
 
 export default App;

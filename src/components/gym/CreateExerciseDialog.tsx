@@ -19,9 +19,11 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Exercise } from "@/types/gym";
+import { CustomExercise } from "@/lib/supabase-config";
 import { useToast } from "@/hooks/use-toast";
 
-type MixedExercise = Exercise | import("@/lib/pocketbase").CustomExerciseRecord;
+// Type for mixed exercises (preset or custom from Supabase)
+type MixedExercise = Exercise | CustomExercise;
 
 interface CreateExerciseDialogProps {
   open: boolean;
@@ -112,11 +114,24 @@ const CreateExerciseDialog: React.FC<CreateExerciseDialogProps> = ({
         setFormData({
           name: editingExercise.name,
           equipment: editingExercise.equipment,
-          difficulty: editingExercise.difficulty,
-          complexity: editingExercise.complexity,
-          primaryMuscle: editingExercise.primaryMuscle,
+          difficulty: editingExercise.difficulty as
+            | "beginner"
+            | "intermediate"
+            | "advanced",
+          complexity: editingExercise.complexity as "low" | "medium" | "high",
+          primaryMuscle:
+            (editingExercise as { primaryMuscle?: string }).primaryMuscle ||
+            (editingExercise as { primary_muscle?: string }).primary_muscle ||
+            "",
           instructions: editingExercise.instructions,
-          movementPattern: editingExercise.movementPattern || "",
+          movementPattern: (editingExercise.movementPattern || "") as
+            | ""
+            | "push"
+            | "pull"
+            | "squat"
+            | "hinge"
+            | "carry"
+            | "isolation",
           requiresSpotter: editingExercise.requiresSpotter || false,
           prerequisites: editingExercise.prerequisites || [],
         });
