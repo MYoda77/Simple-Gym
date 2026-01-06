@@ -7,6 +7,7 @@ import type {
   WorkoutSession,
   WorkoutExercise,
   SessionExercise,
+  User,
 } from "./supabase-config";
 
 // ============================================
@@ -72,7 +73,7 @@ export const authAPI = {
   },
 
   // Listen to auth state changes
-  onAuthStateChange(callback: (user: any) => void) {
+  onAuthStateChange(callback: (user: User | null) => void) {
     return supabase.auth.onAuthStateChange((_event, session) => {
       callback(session?.user ?? null);
     });
@@ -695,7 +696,7 @@ export const workoutSessionsAPI = {
 
 export const realtimeAPI = {
   // Subscribe to custom exercises changes
-  subscribeToCustomExercises(callback: (payload: any) => void) {
+  subscribeToCustomExercises(callback: (payload: unknown) => void) {
     return supabase
       .channel("custom_exercises_changes")
       .on(
@@ -707,7 +708,7 @@ export const realtimeAPI = {
   },
 
   // Subscribe to workouts changes
-  subscribeToWorkouts(callback: (payload: any) => void) {
+  subscribeToWorkouts(callback: (payload: unknown) => void) {
     return supabase
       .channel("workouts_changes")
       .on(
@@ -719,7 +720,7 @@ export const realtimeAPI = {
   },
 
   // Subscribe to schedule changes
-  subscribeToSchedule(callback: (payload: any) => void) {
+  subscribeToSchedule(callback: (payload: unknown) => void) {
     return supabase
       .channel("schedule_changes")
       .on(
@@ -731,7 +732,7 @@ export const realtimeAPI = {
   },
 
   // Subscribe to progress changes
-  subscribeToProgress(callback: (payload: any) => void) {
+  subscribeToProgress(callback: (payload: unknown) => void) {
     return supabase
       .channel("progress_changes")
       .on(
@@ -743,7 +744,8 @@ export const realtimeAPI = {
   },
 
   // Unsubscribe from a channel
-  unsubscribe(subscription: any) {
-    return supabase.removeChannel(subscription);
+  unsubscribe(subscription: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return supabase.removeChannel(subscription as any);
   },
 };

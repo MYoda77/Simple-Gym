@@ -24,19 +24,16 @@ describe("Header", () => {
   };
 
   it("should render the header with title", () => {
-    render(<Header {...defaultProps} />); // @ts-ignore - jest-dom matcher    expect(screen.getByText("Simple gym")).toBeInTheDocument();
+    render(<Header {...defaultProps} />);
+    expect(screen.getByText("Simple gym")).toBeTruthy();
   });
 
   it("should display navigation items", () => {
     render(<Header {...defaultProps} />);
-    // @ts-ignore - jest-dom matcher
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
-    // @ts-ignore - jest-dom matcher
-    expect(screen.getByText("Calendar")).toBeInTheDocument();
-    // @ts-ignore - jest-dom matcher
-    expect(screen.getByText("Workouts")).toBeInTheDocument();
-    // @ts-ignore - jest-dom matcher
-    expect(screen.getByText("Exercises")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard")).toBeTruthy();
+    expect(screen.getByText("Progress")).toBeTruthy();
+    expect(screen.getByText("Calendar")).toBeTruthy();
+    expect(screen.getByText("Exercises")).toBeTruthy();
   });
 
   it("should highlight current view", () => {
@@ -67,6 +64,7 @@ describe("Header", () => {
 
   it("should display app logo", () => {
     render(<Header {...defaultProps} />);
-    const logo = screen.getByText("Simple gym").previousSibling; // @ts-ignore - jest-dom matcher    expect(logo).toBeInTheDocument();
+    const logo = screen.getByText("Simple gym").previousSibling;
+    expect(logo).toBeTruthy();
   });
 });

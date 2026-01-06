@@ -1,9 +1,18 @@
+// Mock implementation for testing
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import { jest } from "@jest/globals";
 
 export const authAPI = {
   getCurrentUser: jest.fn().mockResolvedValue(null),
   onAuthStateChange: jest.fn().mockReturnValue({
-    data: { subscription: { unsubscribe: jest.fn() } },
+    data: {
+      subscription: {
+        id: "test-sub",
+        callback: jest.fn(),
+        unsubscribe: jest.fn(),
+      },
+    },
   }),
   signUp: jest.fn().mockResolvedValue({ user: null }),
   signIn: jest.fn().mockResolvedValue({ user: null }),
@@ -54,8 +63,17 @@ export const sessionsAPI = {
 };
 
 export const realtimeAPI = {
-  subscribeToExercises: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
-  subscribeToWorkouts: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
-  subscribeToProgress: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
-  subscribeToSchedule: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
+  subscribeToExercises: jest.fn().mockReturnValue({
+    unsubscribe: jest.fn().mockResolvedValue("ok"),
+  }),
+  subscribeToWorkouts: jest.fn().mockReturnValue({
+    unsubscribe: jest.fn().mockResolvedValue("ok"),
+  }),
+  subscribeToProgress: jest.fn().mockReturnValue({
+    unsubscribe: jest.fn().mockResolvedValue("ok"),
+  }),
+  subscribeToSchedule: jest.fn().mockReturnValue({
+    unsubscribe: jest.fn().mockResolvedValue("ok"),
+  }),
+  unsubscribe: jest.fn().mockResolvedValue("ok"),
 };

@@ -34,7 +34,7 @@ const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
     const monday = new Date(start);
     monday.setDate(start.getDate() - daysToMonday);
 
-    const dates = [];
+    const dates: Date[] = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(monday);
       date.setDate(monday.getDate() + i);

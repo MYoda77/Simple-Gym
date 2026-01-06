@@ -3,41 +3,52 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useWorkoutTemplates } from "@/hooks/useWorkoutTemplates-COMPATIBLE";
 import { mockWorkout, mockWorkoutExercise } from "@/__tests__/fixtures";
 
-// Mock the API - must define inline in jest.mock for hoisting
-jest.mock("@/lib/supabase-api", () => ({
-  workoutsAPI: {
-    getAll: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    getById: jest.fn(),
-    duplicate: jest.fn(),
-  },
-  realtimeAPI: {
-    subscribeToWorkouts: jest.fn(),
-  },
-}));
+// Use the automatic mock from __mocks__ directory
+jest.mock("@/lib/supabase-api");
 
-// Import the mocked API after jest.mock
-import { workoutsAPI, realtimeAPI } from "@/lib/supabase-api";
-const mockWorkoutsAPI = workoutsAPI as jest.Mocked<typeof workoutsAPI>;
-const mockRealtimeAPI = realtimeAPI as jest.Mocked<typeof realtimeAPI>;
-
-// Mock useToast
+// Create a stable toast mock to prevent infinite re-renders
+const mockToast = jest.fn();
 jest.mock("@/hooks/use-toast", () => ({
   useToast: () => ({
-    toast: jest.fn(),
+    toast: mockToast,
   }),
 }));
+
+jest.mock("@/lib/supabase-config", () => ({
+  supabase: {},
+}));
+
+// Import the mocked API
+import { workoutsAPI, realtimeAPI } from "@/lib/supabase-api";
+
+type RealtimeSubscription = {
+  unsubscribe: () => void;
+};
+
+const mockWorkoutsAPI = workoutsAPI as jest.Mocked<typeof workoutsAPI>;
+const mockRealtimeAPI = realtimeAPI as jest.Mocked<typeof realtimeAPI>;
 
 describe("useWorkoutTemplates", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockToast.mockClear();
+
+    // Properly mock workoutsAPI.getAll with default value
+    mockWorkoutsAPI.getAll.mockResolvedValue([]);
+
+    // Mock subscribeToWorkouts to return a proper subscription object
+    mockRealtimeAPI.subscribeToWorkouts.mockImplementation(() => {
+      const subscription: RealtimeSubscription = {
+        unsubscribe: jest.fn(),
+      };
+      return subscription as unknown as ReturnType<
+        typeof mockRealtimeAPI.subscribeToWorkouts
+      >;
+    });
   });
 
   it("should fetch workouts on mount", async () => {
     const mockWorkouts = [mockWorkout];
-    // @ts-expect-error - Jest mock typing
     mockWorkoutsAPI.getAll.mockResolvedValue(mockWorkouts);
 
     const { result } = renderHook(() => useWorkoutTemplates());
@@ -53,9 +64,7 @@ describe("useWorkoutTemplates", () => {
   });
 
   it("should create a new workout", async () => {
-    // @ts-expect-error - Jest mock typing
     mockWorkoutsAPI.getAll.mockResolvedValue([]);
-    // @ts-expect-error - Jest mock typing
     mockWorkoutsAPI.create.mockResolvedValue(mockWorkout);
 
     const { result } = renderHook(() => useWorkoutTemplates());
@@ -80,9 +89,7 @@ describe("useWorkoutTemplates", () => {
   });
 
   it("should update an existing workout", async () => {
-    // @ts-expect-error - Jest mock typing
     mockWorkoutsAPI.getAll.mockResolvedValue([mockWorkout]);
-    // @ts-expect-error - Jest mock typing
     mockWorkoutsAPI.update.mockResolvedValue({
       ...mockWorkout,
       name: "Updated Workout",
@@ -104,9 +111,7 @@ describe("useWorkoutTemplates", () => {
   });
 
   it("should delete a workout", async () => {
-    // @ts-expect-error - Jest mock typing
     mockWorkoutsAPI.getAll.mockResolvedValue([mockWorkout]);
-    // @ts-expect-error - Jest mock typing
     mockWorkoutsAPI.delete.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useWorkoutTemplates());
@@ -122,7 +127,6 @@ describe("useWorkoutTemplates", () => {
 
   it("should handle errors when fetching workouts", async () => {
     const error = new Error("Failed to fetch");
-    // @ts-expect-error - Jest mock typing
     mockWorkoutsAPI.getAll.mockRejectedValue(error);
 
     const { result } = renderHook(() => useWorkoutTemplates());

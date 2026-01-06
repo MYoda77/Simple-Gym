@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 import { renderHook, act } from "@testing-library/react";
 import React from "react";
@@ -30,10 +31,15 @@ describe("useAuth", () => {
   );
 
   it("should initialize with null user and loading true", () => {
-    // @ts-expect-error - Jest mock typing
     mockAuthAPI.getCurrentUser.mockResolvedValue(null);
     mockAuthAPI.onAuthStateChange.mockReturnValue({
-      data: { subscription: { unsubscribe: jest.fn() } },
+      data: {
+        subscription: {
+          id: "test-sub",
+          callback: jest.fn(),
+          unsubscribe: jest.fn(),
+        },
+      },
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -43,13 +49,20 @@ describe("useAuth", () => {
   });
 
   it("should sign up a new user", async () => {
-    // @ts-expect-error - Jest mock typing
     mockAuthAPI.getCurrentUser.mockResolvedValue(null);
     mockAuthAPI.onAuthStateChange.mockReturnValue({
-      data: { subscription: { unsubscribe: jest.fn() } },
+      data: {
+        subscription: {
+          id: "test-sub",
+          callback: jest.fn(),
+          unsubscribe: jest.fn(),
+        },
+      },
     });
-    // @ts-expect-error - Jest mock typing
-    mockAuthAPI.signUp.mockResolvedValue({ user: mockUser });
+    mockAuthAPI.signUp.mockResolvedValue({
+      user: mockUser,
+      session: null,
+    } as any);
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -69,13 +82,20 @@ describe("useAuth", () => {
   });
 
   it("should sign in a user", async () => {
-    // @ts-expect-error - Jest mock typing
     mockAuthAPI.getCurrentUser.mockResolvedValue(null);
     mockAuthAPI.onAuthStateChange.mockReturnValue({
-      data: { subscription: { unsubscribe: jest.fn() } },
+      data: {
+        subscription: {
+          id: "test-sub",
+          callback: jest.fn(),
+          unsubscribe: jest.fn(),
+        },
+      },
     });
-    // @ts-expect-error - Jest mock typing
-    mockAuthAPI.signIn.mockResolvedValue({ user: mockUser });
+    mockAuthAPI.signIn.mockResolvedValue({
+      user: mockUser,
+      session: null,
+    } as any);
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -90,12 +110,16 @@ describe("useAuth", () => {
   });
 
   it("should sign out a user", async () => {
-    // @ts-expect-error - Jest mock typing
     mockAuthAPI.getCurrentUser.mockResolvedValue(mockUser);
     mockAuthAPI.onAuthStateChange.mockReturnValue({
-      data: { subscription: { unsubscribe: jest.fn() } },
+      data: {
+        subscription: {
+          id: "test-sub",
+          callback: jest.fn(),
+          unsubscribe: jest.fn(),
+        },
+      },
     });
-    // @ts-expect-error - Jest mock typing
     mockAuthAPI.signOut.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useAuth(), { wrapper });

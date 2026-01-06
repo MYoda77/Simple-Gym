@@ -75,5 +75,6 @@ export const mockSchedule: Schedule = {
   workout_id: "workout-1",
   scheduled_date: "2024-01-15",
   completed: false,
+  completed_at: null,
   notes: "Morning workout",
 };

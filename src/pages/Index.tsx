@@ -1389,16 +1389,32 @@ const Index = () => {
     if (!contextMenu.dateKey) return;
 
     try {
-      await unscheduleWorkout(contextMenu.dateKey);
+      // Find the schedule entry for this date
+      const scheduleEntry = scheduleEntries.find(
+        (entry) => entry.scheduled_date === contextMenu.dateKey
+      );
+
+      if (!scheduleEntry) {
+        toast({
+          title: "Error",
+          description: "Could not find scheduled workout.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Delete using the schedule entry ID (not the date)
+      await unscheduleWorkout(scheduleEntry.id);
+
       toast({
         title: "Workout Removed",
-        description: "Workout removed from schedule.",
+        description: "Workout has been removed from your schedule.",
       });
     } catch (error) {
       console.error("Failed to remove workout:", error);
       toast({
         title: "Error",
-        description: "Failed to remove workout.",
+        description: "Failed to remove workout from schedule.",
         variant: "destructive",
       });
     }

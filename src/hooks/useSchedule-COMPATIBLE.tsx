@@ -4,7 +4,7 @@ import type { Schedule } from "@/lib/supabase-config";
 import { useToast } from "@/hooks/use-toast";
 
 export function useSchedule() {
-  const [scheduledWorkouts, setScheduledWorkouts] = useState<any[]>([]);
+  const [scheduledWorkouts, setScheduledWorkouts] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -16,8 +16,9 @@ export function useSchedule() {
       const data = await scheduleAPI.getAll();
       setScheduledWorkouts(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "An error occurred";
+      setError(message);
       toast({
         title: "Error",
         description: "Failed to load schedule",
@@ -36,10 +37,14 @@ export function useSchedule() {
     try {
       const data = await scheduleAPI.getByDateRange(startDate, endDate);
       return data;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to load schedule for date range";
       toast({
         title: "Error",
-        description: err.message || "Failed to load schedule for date range",
+        description: message,
         variant: "destructive",
       });
       return [];
@@ -50,7 +55,7 @@ export function useSchedule() {
   const getScheduleByDate = async (date: string) => {
     try {
       return await scheduleAPI.getByDate(date);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return [];
     }
   };
@@ -74,10 +79,12 @@ export function useSchedule() {
         description: "Workout scheduled successfully",
       });
       return newSchedule;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to schedule workout";
       toast({
         title: "Error",
-        description: err.message || "Failed to schedule workout",
+        description: message,
         variant: "destructive",
       });
       throw err;
@@ -99,10 +106,12 @@ export function useSchedule() {
         title: "Success",
         description: "Schedule updated successfully",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update schedule";
       toast({
         title: "Error",
-        description: err.message || "Failed to update schedule",
+        description: message,
         variant: "destructive",
       });
       throw err;
@@ -128,10 +137,14 @@ export function useSchedule() {
         title: "Success",
         description: "Workout marked as completed",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to mark workout as completed";
       toast({
         title: "Error",
-        description: err.message || "Failed to mark workout as completed",
+        description: message,
         variant: "destructive",
       });
       throw err;
@@ -149,10 +162,12 @@ export function useSchedule() {
         title: "Success",
         description: "Scheduled workout deleted successfully",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete schedule";
       toast({
         title: "Error",
-        description: err.message || "Failed to delete schedule",
+        description: message,
         variant: "destructive",
       });
       throw err;

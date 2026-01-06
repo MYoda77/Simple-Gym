@@ -16,8 +16,9 @@ export function useProgressTracking() {
       const data = await progressAPI.getAll();
       setProgressEntries(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "An error occurred";
+      setError(message);
       toast({
         title: "Error",
         description: "Failed to load progress data",
@@ -36,10 +37,14 @@ export function useProgressTracking() {
     try {
       const data = await progressAPI.getByDateRange(startDate, endDate);
       return data;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to load progress for date range";
       toast({
         title: "Error",
-        description: err.message || "Failed to load progress for date range",
+        description: message,
         variant: "destructive",
       });
       return [];
@@ -50,7 +55,7 @@ export function useProgressTracking() {
   const getProgressByDate = async (date: string) => {
     try {
       return await progressAPI.getByDate(date);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return null;
     }
   };
@@ -71,10 +76,12 @@ export function useProgressTracking() {
         description: "Progress logged successfully",
       });
       return newProgress;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to log progress";
       toast({
         title: "Error",
-        description: err.message || "Failed to log progress",
+        description: message,
         variant: "destructive",
       });
       throw err;
@@ -96,10 +103,12 @@ export function useProgressTracking() {
         description: "Progress updated successfully",
       });
       return updatedProgress;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update progress";
       toast({
         title: "Error",
-        description: err.message || "Failed to update progress",
+        description: message,
         variant: "destructive",
       });
       throw err;
@@ -115,10 +124,12 @@ export function useProgressTracking() {
         title: "Success",
         description: "Progress entry deleted successfully",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete progress";
       toast({
         title: "Error",
-        description: err.message || "Failed to delete progress",
+        description: message,
         variant: "destructive",
       });
       throw err;
@@ -129,10 +140,12 @@ export function useProgressTracking() {
   const getLatestProgress = async () => {
     try {
       return await progressAPI.getLatest();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to get latest progress";
       toast({
         title: "Error",
-        description: err.message || "Failed to get latest progress",
+        description: message,
         variant: "destructive",
       });
       return null;
@@ -168,7 +181,7 @@ export function useProgressTracking() {
   };
 
   // Log workout (for backward compatibility)
-  const logWorkout = async (workoutData: any) => {
+  const logWorkout = async (workoutData: Partial<Progress>) => {
     // For backward compatibility - this was used to log workout history
     // In the new system, this is handled separately by workout sessions
     console.log(
@@ -182,23 +195,25 @@ export function useProgressTracking() {
 
     // Subscribe to real-time changes
     const subscription = realtimeAPI.subscribeToProgress((payload) => {
-      console.log("Progress change:", payload);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const p = payload as any;
+      console.log("Progress change:", p);
 
-      if (payload.eventType === "INSERT") {
+      if (p.eventType === "INSERT") {
         setProgressEntries((prev) =>
-          [payload.new as Progress, ...prev].sort(
+          [p.new as Progress, ...prev].sort(
             (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
           )
         );
-      } else if (payload.eventType === "UPDATE") {
+      } else if (p.eventType === "UPDATE") {
         setProgressEntries((prev) =>
           prev.map((entry) =>
-            entry.id === payload.new.id ? (payload.new as Progress) : entry
+            entry.id === p.new.id ? (p.new as Progress) : entry
           )
         );
-      } else if (payload.eventType === "DELETE") {
+      } else if (p.eventType === "DELETE") {
         setProgressEntries((prev) =>
-          prev.filter((entry) => entry.id !== payload.old.id)
+          prev.filter((entry) => entry.id !== p.old.id)
         );
       }
     });

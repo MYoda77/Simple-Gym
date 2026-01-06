@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 
 // Get these from your Supabase project settings
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -9,6 +10,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export type { User };
 
 // TypeScript types for your database tables
 export interface CustomExercise {

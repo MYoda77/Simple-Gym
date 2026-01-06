@@ -17,8 +17,9 @@ export function useWorkoutTemplates() {
       const data = await workoutsAPI.getAll();
       setWorkouts(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "An error occurred";
+      setError(message);
       toast({
         title: "Error",
         description: "Failed to load workouts",
@@ -51,10 +52,12 @@ export function useWorkoutTemplates() {
         description: "Workout created successfully",
       });
       return newWorkout;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to create workout";
       toast({
         title: "Error",
-        description: err.message || "Failed to create workout",
+        description: message,
         variant: "destructive",
       });
       throw err;
@@ -78,10 +81,12 @@ export function useWorkoutTemplates() {
         description: "Workout updated successfully",
       });
       return updatedWorkout;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update workout";
       toast({
         title: "Error",
-        description: err.message || "Failed to update workout",
+        description: message,
         variant: "destructive",
       });
       throw err;
@@ -97,10 +102,12 @@ export function useWorkoutTemplates() {
         title: "Success",
         description: "Workout deleted successfully",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete workout";
       toast({
         title: "Error",
-        description: err.message || "Failed to delete workout",
+        description: message,
         variant: "destructive",
       });
       throw err;
@@ -111,10 +118,12 @@ export function useWorkoutTemplates() {
   const getWorkoutById = async (id: string) => {
     try {
       return await workoutsAPI.getById(id);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to get workout";
       toast({
         title: "Error",
-        description: err.message || "Failed to get workout",
+        description: message,
         variant: "destructive",
       });
       throw err;
@@ -131,10 +140,12 @@ export function useWorkoutTemplates() {
         description: "Workout duplicated successfully",
       });
       return duplicated;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to duplicate workout";
       toast({
         title: "Error",
-        description: err.message || "Failed to duplicate workout",
+        description: message,
         variant: "destructive",
       });
       throw err;
@@ -156,19 +167,21 @@ export function useWorkoutTemplates() {
 
     // Subscribe to real-time changes
     const subscription = realtimeAPI.subscribeToWorkouts((payload) => {
-      console.log("Workout change:", payload);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const p = payload as any;
+      console.log("Workout change:", p);
 
-      if (payload.eventType === "INSERT") {
-        setWorkouts((prev) => [payload.new as Workout, ...prev]);
-      } else if (payload.eventType === "UPDATE") {
+      if (p.eventType === "INSERT") {
+        setWorkouts((prev) => [p.new as Workout, ...prev]);
+      } else if (p.eventType === "UPDATE") {
         setWorkouts((prev) =>
           prev.map((workout) =>
-            workout.id === payload.new.id ? (payload.new as Workout) : workout
+            workout.id === p.new.id ? (p.new as Workout) : workout
           )
         );
-      } else if (payload.eventType === "DELETE") {
+      } else if (p.eventType === "DELETE") {
         setWorkouts((prev) =>
-          prev.filter((workout) => workout.id !== payload.old.id)
+          prev.filter((workout) => workout.id !== p.old.id)
         );
       }
     });
