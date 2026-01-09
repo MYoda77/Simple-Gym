@@ -4,6 +4,7 @@ import { AuthWrapper } from "@/components/auth/AuthWrapper";
 import { Toaster } from "@/components/ui/toaster";
 import Index from "@/pages/Index";
 import Progress from "@/pages/Progress";
+import Profile from "@/pages/Profile";
 import NotFound from "@/pages/NotFound";
 import "./App.css";
 
@@ -29,6 +30,16 @@ function App() {
               element={
                 <AuthWrapper>
                   <Progress />
+                </AuthWrapper>
+              }
+            />
+
+            {/* Profile page also protected */}
+            <Route
+              path="/profile"
+              element={
+                <AuthWrapper>
+                  <Profile />
                 </AuthWrapper>
               }
             />

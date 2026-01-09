@@ -200,11 +200,11 @@ const RestDayConfigDialog: React.FC<RestDayConfigDialogProps> = ({
                     key={activity}
                     onClick={() => toggleActivity(activity)}
                     className={`
-                      px-3 py-1.5 rounded-full text-xs font-medium transition-all
+                      px-3 py-1.5 rounded-full text-xs font-medium transition-all border
                       ${
                         selectedActivities.includes(activity)
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted/50 hover:bg-muted text-foreground border-border"
                       }
                     `}
                   >

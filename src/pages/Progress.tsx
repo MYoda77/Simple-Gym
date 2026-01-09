@@ -27,6 +27,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Settings, Save } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useAchievements } from "@/hooks/useAchievements";
+import {
+  UserStats,
+  calculateStreak,
+  getThisWeekWorkouts,
+} from "@/utils/achievementSystem";
 
 const Progress = () => {
   const navigate = useNavigate();
@@ -71,27 +78,9 @@ const Progress = () => {
     ];
   });
 
-  const [achievements, setAchievements] = useState<Achievement[]>(() => {
-    const saved = localStorage.getItem("progress-achievements");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (error) {
-        console.error("Error parsing saved achievements:", error);
-      }
-    }
-    // Return initial welcome achievement
-    return [
-      {
-        id: "welcome",
-        title: "Welcome to SimpleGym!",
-        date: new Date().toISOString(),
-        icon: "🎉",
-        description:
-          "Start your fitness journey by logging your first workout or weight.",
-      },
-    ];
-  });
+  // Use centralized achievement system
+  const { achievements, checkAndUnlockAchievements, resetAchievements } =
+    useAchievements();
 
   const [progressPhotos, setProgressPhotos] = useState<ProgressPhoto[]>(() => {
     const saved = localStorage.getItem("progress-photos");
@@ -101,6 +90,13 @@ const Progress = () => {
   const [recentActivities, setRecentActivities] = useState<Activity[]>(() => {
     const saved = localStorage.getItem("progress-activities");
     return saved ? JSON.parse(saved) : [];
+  });
+
+  const [personalRecords, setPersonalRecords] = useState<
+    Record<string, number>
+  >(() => {
+    const saved = localStorage.getItem("personal-records");
+    return saved ? JSON.parse(saved) : {};
   });
 
   const [progressData, setProgressData] = useState<ProgressData>(() => {
@@ -120,6 +116,65 @@ const Progress = () => {
         console.error("Error parsing saved progress data:", error);
       }
     }
+
+    // Try to reconstruct from recent activities if main data is missing
+    const activities = localStorage.getItem("progress-activities");
+    if (activities) {
+      try {
+        const parsedActivities = JSON.parse(activities);
+        const weightActivities = parsedActivities.filter(
+          (a: any) => a.type === "weight"
+        );
+
+        if (weightActivities.length > 0) {
+          const weightData: { date: string; value: number }[] = [];
+          const bmiData: { date: string; value: number }[] = [];
+
+          const userSettingsStr = localStorage.getItem("user-settings");
+          const userSettings = userSettingsStr
+            ? JSON.parse(userSettingsStr)
+            : { height: 175 };
+          const heightInMeters = userSettings.height / 100;
+
+          weightActivities.forEach((activity: any) => {
+            // Extract weight from description (e.g., "120kg (30% body fat) - fat as fuck")
+            const match = activity.description.match(/^(\d+(?:\.\d+)?)kg/);
+            if (match) {
+              const weight = parseFloat(match[1]);
+              weightData.push({ date: activity.date, value: weight });
+
+              // Calculate BMI
+              const bmi = weight / (heightInMeters * heightInMeters);
+              bmiData.push({
+                date: activity.date,
+                value: Math.round(bmi * 10) / 10,
+              });
+            }
+          });
+
+          if (weightData.length > 0) {
+            console.log(
+              "Reconstructed weight data from activities:",
+              weightData
+            );
+            return {
+              weight: weightData.sort(
+                (a, b) =>
+                  new Date(a.date).getTime() - new Date(b.date).getTime()
+              ),
+              bmi: bmiData.sort(
+                (a, b) =>
+                  new Date(a.date).getTime() - new Date(b.date).getTime()
+              ),
+              measurements: [],
+            };
+          }
+        }
+      } catch (error) {
+        console.error("Error reconstructing data from activities:", error);
+      }
+    }
+
     // Return empty structure for fresh start
     return {
       weight: [],
@@ -171,6 +226,53 @@ const Progress = () => {
       };
 
       setRecentActivities((prev) => [newActivity, ...prev.slice(0, 9)]);
+
+      // Check for achievements after logging weight
+      setTimeout(() => {
+        const workoutHistory = JSON.parse(
+          localStorage.getItem("workout-history") || "[]"
+        );
+        const personalRecords = JSON.parse(
+          localStorage.getItem("personal-records") || "{}"
+        );
+
+        // Calculate user stats
+        const { currentStreak, maxStreak } = calculateStreak(workoutHistory);
+        const thisWeekWorkouts = getThisWeekWorkouts(workoutHistory);
+
+        const uniqueExercises = new Set<string>();
+        workoutHistory.forEach((workout: any) => {
+          if (workout.name) uniqueExercises.add(workout.name);
+        });
+        Object.keys(personalRecords).forEach((exercise) => {
+          uniqueExercises.add(exercise);
+        });
+
+        const stats: UserStats = {
+          totalWorkouts: workoutHistory.length,
+          thisWeekWorkouts,
+          totalPRs: Object.keys(personalRecords).length,
+          currentStreak,
+          maxStreak,
+          weightLogged: true, // Just logged weight
+          firstWorkoutDate:
+            workoutHistory.length > 0
+              ? workoutHistory[workoutHistory.length - 1].date
+              : undefined,
+          totalWeight: 0,
+          uniqueExercises: uniqueExercises.size,
+        };
+
+        const newAchievements = checkAndUnlockAchievements(stats);
+
+        // Show achievement notifications
+        newAchievements.forEach((achievement) => {
+          toast({
+            title: `${achievement.icon} Achievement Unlocked!`,
+            description: achievement.title,
+          });
+        });
+      }, 500);
 
       // Update stats if this is a new record or first entry
       const currentWeightStat = stats.find((s) => s.label === "Current Weight");
@@ -252,9 +354,8 @@ const Progress = () => {
     localStorage.setItem("progress-stats", JSON.stringify(stats));
   }, [stats]);
 
-  useEffect(() => {
-    localStorage.setItem("progress-achievements", JSON.stringify(achievements));
-  }, [achievements]);
+  // Achievements are now managed by useAchievements hook
+  // No need to manually save them here
 
   useEffect(() => {
     localStorage.setItem("progress-photos", JSON.stringify(progressPhotos));
@@ -326,7 +427,7 @@ const Progress = () => {
   const resetProgressData = () => {
     // Reset all progress-related state to empty defaults
     setStats([]);
-    setAchievements([]);
+    resetAchievements(); // Use hook function instead of setAchievements
     setProgressPhotos([]);
     setRecentActivities([]);
     setProgressData({
@@ -357,9 +458,45 @@ const Progress = () => {
       />
 
       <main className="pb-24">
-        <div className="p-4 space-y-6">
+        <div className="px-2 sm:px-4 py-4 space-y-6">
           <KeyStats stats={stats} />
           <ProgressCharts data={progressData} />
+
+          {/* Personal Records Section */}
+          {Object.keys(personalRecords).length > 0 && (
+            <section className="mb-6">
+              <Card className="bg-card/50 backdrop-blur-sm border-border/20">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    🏆 Personal Records
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {Object.entries(personalRecords)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([exercise, weight]) => (
+                        <div
+                          key={exercise}
+                          className="p-4 bg-accent/10 rounded-lg border border-accent/20 hover:bg-accent/20 transition-colors"
+                        >
+                          <p className="text-sm font-medium text-foreground mb-1">
+                            {exercise}
+                          </p>
+                          <p className="text-2xl font-bold text-primary">
+                            {weight}
+                            <span className="text-sm text-muted-foreground ml-1">
+                              kg
+                            </span>
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
           <Achievements achievements={achievements} />
           <ProgressPhotos photos={progressPhotos} onAddPhoto={handleAddPhoto} />
           <RecentActivity activities={recentActivities} />

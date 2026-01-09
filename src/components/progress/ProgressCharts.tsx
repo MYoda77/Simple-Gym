@@ -18,7 +18,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { ProgressData, ChartPeriod, ChartType } from "@/types/progress";
-import { subDays, isAfter, parseISO } from "date-fns";
+import { subDays, isAfter, parseISO, format } from "date-fns";
 
 interface ProgressChartsProps {
   data: ProgressData;
@@ -69,10 +69,15 @@ export const ProgressCharts = ({ data }: ProgressChartsProps) => {
     if (activeChart === "measurements") {
       return [];
     }
-    return filterDataByPeriod(
+    const filteredData = filterDataByPeriod(
       currentData as { date: string; value: number }[],
       period
     );
+    // Format dates for display
+    return filteredData.map((item) => ({
+      ...item,
+      date: format(parseISO(item.date), "MMM dd"),
+    }));
   };
 
   return (

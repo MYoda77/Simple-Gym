@@ -8,10 +8,11 @@ export interface Stat {
 export interface Achievement {
   id: string;
   title: string;
-  date: string;
+  date?: string; // Legacy support
+  unlockedAt?: string; // New format from achievementSystem
   icon: string;
   description?: string;
-}
+  category?: "beginner" | "workout" | "pr" | "streak" | "weekly" | "special";  condition?: (stats: any) => boolean; // For achievementSystem compatibility}
 
 export interface ProgressPhoto {
   before: string;

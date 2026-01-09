@@ -24,6 +24,7 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
+  Copy,
 } from "lucide-react";
 import {
   Workout,
@@ -47,10 +48,17 @@ import { useSchedule } from "@/hooks/useSchedule-COMPATIBLE";
 import { useRealTimeSync } from "@/hooks/useRealTimeSync";
 import { useAuth } from "@/lib/useAuth";
 import { CustomExercise, supabase } from "@/lib/supabase-config";
-import CalendarContextMenu from "@/components/gym/CalendarContextmenu";
+import { useAchievements } from "@/hooks/useAchievements";
+import {
+  UserStats,
+  calculateStreak,
+  getThisWeekWorkouts,
+} from "@/utils/achievementSystem";
+import CalendarContextMenu from "@/components/gym/CalendarContextMenu";
 import Dashboard from "@/components/gym/Dashboard";
 import Header from "@/components/gym/Header";
 import ActiveWorkoutView from "@/components/gym/ActiveWorkoutView";
+import { AchievementUnlockNotification } from "@/components/gym/ConfettiCelebration";
 import CreateWorkoutDialog from "@/components/gym/CreateWorkoutDialog";
 import CreateExerciseDialog from "@/components/gym/CreateExerciseDialog";
 import WorkoutSetupDialog from "@/components/gym/WorkoutSetupDialog";
@@ -172,8 +180,8 @@ const ExerciseDatabase = React.memo(
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[300px] relative">
+          <div className="space-y-4">
+            <div className="relative">
               <Search className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
               <Input
                 placeholder="Search exercises..."
@@ -197,61 +205,63 @@ const ExerciseDatabase = React.memo(
                 </Button>
               )}
             </div>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-36 glass">
-                <SelectValue placeholder="Muscle" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Muscles</SelectItem>
-                <SelectItem value="chest">Chest</SelectItem>
-                <SelectItem value="back">Back</SelectItem>
-                <SelectItem value="legs">Legs</SelectItem>
-                <SelectItem value="shoulders">Shoulders</SelectItem>
-                <SelectItem value="biceps">Biceps</SelectItem>
-                <SelectItem value="triceps">Triceps</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-36 glass">
-                <SelectValue placeholder="Equipment" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Equipment</SelectItem>
-                <SelectItem value="barbell">Barbell</SelectItem>
-                <SelectItem value="dumbbell">Dumbbell</SelectItem>
-                <SelectItem value="bodyweight">Bodyweight</SelectItem>
-                <SelectItem value="cable">Cable</SelectItem>
-                <SelectItem value="machine">Machine</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={filterComplexity}
-              onValueChange={setFilterComplexity}
-            >
-              <SelectTrigger className="w-36 glass">
-                <SelectValue placeholder="Complexity" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterMovement} onValueChange={setFilterMovement}>
-              <SelectTrigger className="w-36 glass">
-                <SelectValue placeholder="Movement" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Patterns</SelectItem>
-                <SelectItem value="push">Push</SelectItem>
-                <SelectItem value="pull">Pull</SelectItem>
-                <SelectItem value="squat">Squat</SelectItem>
-                <SelectItem value="hinge">Hinge</SelectItem>
-                <SelectItem value="carry">Carry</SelectItem>
-                <SelectItem value="isolation">Isolation</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-full glass">
+                  <SelectValue placeholder="Muscle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Muscles</SelectItem>
+                  <SelectItem value="chest">Chest</SelectItem>
+                  <SelectItem value="back">Back</SelectItem>
+                  <SelectItem value="legs">Legs</SelectItem>
+                  <SelectItem value="shoulders">Shoulders</SelectItem>
+                  <SelectItem value="biceps">Biceps</SelectItem>
+                  <SelectItem value="triceps">Triceps</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-full glass">
+                  <SelectValue placeholder="Equipment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Equipment</SelectItem>
+                  <SelectItem value="barbell">Barbell</SelectItem>
+                  <SelectItem value="dumbbell">Dumbbell</SelectItem>
+                  <SelectItem value="bodyweight">Bodyweight</SelectItem>
+                  <SelectItem value="cable">Cable</SelectItem>
+                  <SelectItem value="machine">Machine</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={filterComplexity}
+                onValueChange={setFilterComplexity}
+              >
+                <SelectTrigger className="w-full glass">
+                  <SelectValue placeholder="Complexity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterMovement} onValueChange={setFilterMovement}>
+                <SelectTrigger className="w-full glass">
+                  <SelectValue placeholder="Movement" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Patterns</SelectItem>
+                  <SelectItem value="push">Push</SelectItem>
+                  <SelectItem value="pull">Pull</SelectItem>
+                  <SelectItem value="squat">Squat</SelectItem>
+                  <SelectItem value="hinge">Hinge</SelectItem>
+                  <SelectItem value="carry">Carry</SelectItem>
+                  <SelectItem value="isolation">Isolation</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -467,6 +477,7 @@ const Index = () => {
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    duplicateWorkout,
     loading: workoutsLoading,
     refresh: refreshWorkoutTemplates,
     initializeDefaultTemplates,
@@ -486,6 +497,10 @@ const Index = () => {
     unscheduleWorkout,
     loading: scheduleLoading,
   } = useSchedule();
+
+  // Achievement system
+  const { achievements, checkAndUnlockAchievements, resetAchievements } =
+    useAchievements();
 
   // Enable real-time sync
   const realTimeSync = useRealTimeSync({
@@ -531,6 +546,15 @@ const Index = () => {
   const [pendingWorkoutName, setPendingWorkoutName] = useState<string>("");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Achievement notification state
+  const [showAchievementNotification, setShowAchievementNotification] =
+    useState(false);
+  const [currentAchievement, setCurrentAchievement] = useState<{
+    icon: string;
+    title: string;
+    description: string;
+  } | null>(null);
+
   // Convert workout templates to the legacy format for compatibility
   const workouts = useMemo(() => {
     const result: Record<string, Workout> = {};
@@ -565,17 +589,30 @@ const Index = () => {
   const [completedSets, setCompletedSets] = useState<Record<string, boolean>>(
     {}
   );
-  // Use workout history from the hook (convert format if needed)
-  const workoutHistory = useMemo(() => {
+
+  // Load workout history from localStorage
+  const [workoutHistoryRecords, setWorkoutHistoryRecords] = useState<
+    WorkoutRecord[]
+  >(() => {
+    const saved = localStorage.getItem("workout-history");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Use hook workout history for progress data (weight/BMI)
+  const progressWorkoutHistory = useMemo(() => {
     return hookWorkoutHistory.map((entry) => ({
       date: entry.date,
       weight: entry.weight || 0,
       bodyFat: entry.body_fat_percentage || 0,
     }));
   }, [hookWorkoutHistory]);
+
   const [personalRecords, setPersonalRecords] = useState<
     Record<string, number>
-  >({});
+  >(() => {
+    const saved = localStorage.getItem("personal-records");
+    return saved ? JSON.parse(saved) : {};
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
@@ -679,6 +716,48 @@ const Index = () => {
     }
   }, [isWorkoutActive]);
 
+  // Persist personal records to localStorage
+  useEffect(() => {
+    localStorage.setItem("personal-records", JSON.stringify(personalRecords));
+  }, [personalRecords]);
+
+  // Calculate user stats for achievement system
+  const calculateUserStats = useCallback((): UserStats => {
+    // Calculate streaks
+    const { currentStreak, maxStreak } = calculateStreak(workoutHistoryRecords);
+    const thisWeekWorkouts = getThisWeekWorkouts(workoutHistoryRecords);
+
+    // Get first workout date
+    const firstWorkout =
+      workoutHistoryRecords.length > 0
+        ? workoutHistoryRecords[workoutHistoryRecords.length - 1].date
+        : undefined;
+
+    // Count unique exercises from workout history and personal records
+    const uniqueExercises = new Set<string>();
+    workoutHistoryRecords.forEach((workout) => {
+      if (workout.name) uniqueExercises.add(workout.name);
+    });
+    Object.keys(personalRecords).forEach((exercise) => {
+      uniqueExercises.add(exercise);
+    });
+
+    // Check if weight has been logged
+    const weightLogged = progressData.length > 0;
+
+    return {
+      totalWorkouts: workoutHistoryRecords.length,
+      thisWeekWorkouts,
+      totalPRs: Object.keys(personalRecords).length,
+      currentStreak,
+      maxStreak,
+      weightLogged,
+      firstWorkoutDate: firstWorkout,
+      totalWeight: 0,
+      uniqueExercises: uniqueExercises.size,
+    };
+  }, [workoutHistoryRecords, personalRecords, progressData]);
+
   const startWorkout = (workoutName: string) => {
     setPendingWorkoutName(workoutName);
     setIsWorkoutSetupOpen(true);
@@ -732,12 +811,49 @@ const Index = () => {
         ...prev,
         [exerciseName]: actualWeight,
       }));
+
+      // Add PR to recent activities
+      const prActivity = {
+        id: Date.now().toString(),
+        type: "pr" as const,
+        date: new Date().toISOString(),
+        description: `New PR: ${exerciseName} - ${actualWeight}kg`,
+        icon: "trophy",
+      };
+      const currentActivities = JSON.parse(
+        localStorage.getItem("progress-activities") || "[]"
+      );
+      localStorage.setItem(
+        "progress-activities",
+        JSON.stringify([prActivity, ...currentActivities.slice(0, 9)])
+      );
+
       toast({
         title: "New Personal Record! 🏆",
         description: `${exerciseName}: ${actualWeight}kg (previous: ${
           currentRecord || "none"
         })`,
       });
+
+      // Check for achievements after setting PR
+      setTimeout(() => {
+        const stats = calculateUserStats();
+        const newAchievements = checkAndUnlockAchievements(stats);
+
+        // Show confetti notification for each achievement
+        newAchievements.forEach((achievement, index) => {
+          setTimeout(() => {
+            setCurrentAchievement(achievement);
+            setShowAchievementNotification(true);
+
+            // Also show toast
+            toast({
+              title: `${achievement.icon} Achievement Unlocked!`,
+              description: achievement.title,
+            });
+          }, index * 5500); // Stagger multiple achievements
+        });
+      }, 500);
     }
 
     if (currentSetIndex < exercise.sets - 1) {
@@ -764,6 +880,14 @@ const Index = () => {
     if (!activeWorkout) return;
 
     setIsWorkoutActive(false);
+    const completedWorkoutName = activeWorkout;
+    const completedDuration = workoutTimer;
+    const completedExerciseCount = workouts[activeWorkout].exercises.length;
+    const completedTotalSets = workouts[activeWorkout].exercises.reduce(
+      (acc, ex) => acc + ex.sets,
+      0
+    );
+
     setActiveWorkout(null); // Clear active workout state
     setCurrentExerciseIndex(0); // Reset exercise index
     setCurrentSetIndex(0); // Reset set index
@@ -772,18 +896,59 @@ const Index = () => {
 
     const workoutRecord: WorkoutRecord = {
       date: new Date().toISOString(),
-      name: activeWorkout,
-      duration: workoutTimer,
-      exercises: workouts[activeWorkout].exercises.length,
-      totalSets: workouts[activeWorkout].exercises.reduce(
-        (acc, ex) => acc + ex.sets,
-        0
-      ),
+      name: completedWorkoutName,
+      duration: completedDuration,
+      exercises: completedExerciseCount,
+      totalSets: completedTotalSets,
     };
-    // Log workout using the hook
-    // Workout tracking now handled by workout sessions
 
-    // Note: Workout progress tracking removed - only tracking weight/BMI in Progress page
+    // Add workout to history in localStorage
+    const workoutHistory = JSON.parse(
+      localStorage.getItem("workout-history") || "[]"
+    );
+    const updatedHistory = [workoutRecord, ...workoutHistory];
+    localStorage.setItem("workout-history", JSON.stringify(updatedHistory));
+    // Update state immediately
+    setWorkoutHistoryRecords(updatedHistory);
+
+    console.log("Workout completed and saved:", workoutRecord);
+    console.log("Updated history:", updatedHistory);
+
+    // Add workout completion to recent activities
+    const workoutActivity = {
+      id: Date.now().toString(),
+      type: "workout" as const,
+      date: workoutRecord.date,
+      description: `Completed ${completedWorkoutName} - ${completedExerciseCount} exercises, ${completedTotalSets} sets`,
+      icon: "dumbbell",
+    };
+    const currentActivities = JSON.parse(
+      localStorage.getItem("progress-activities") || "[]"
+    );
+    localStorage.setItem(
+      "progress-activities",
+      JSON.stringify([workoutActivity, ...currentActivities.slice(0, 9)])
+    );
+
+    // Check for achievements after workout completion
+    setTimeout(() => {
+      const stats = calculateUserStats();
+      const newAchievements = checkAndUnlockAchievements(stats);
+
+      // Show confetti notification for each achievement
+      newAchievements.forEach((achievement, index) => {
+        setTimeout(() => {
+          setCurrentAchievement(achievement);
+          setShowAchievementNotification(true);
+
+          // Also show toast
+          toast({
+            title: `${achievement.icon} Achievement Unlocked!`,
+            description: achievement.title,
+          });
+        }, index * 5500); // Stagger multiple achievements
+      });
+    }, 1000);
 
     toast({
       title: "Workout Complete! 🎉",
@@ -811,9 +976,9 @@ const Index = () => {
     const data = {
       workouts,
       schedule,
-      workoutHistory,
+      workoutHistory: workoutHistoryRecords,
       personalRecords,
-      progressData,
+      progressData: progressWorkoutHistory,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
@@ -833,6 +998,9 @@ const Index = () => {
     // Reset user data state to empty defaults (preserving workout templates)
     setCompletedSets({});
     setPersonalRecords({});
+    setWorkoutHistoryRecords([]);
+    localStorage.removeItem("workout-history");
+    localStorage.removeItem("personal-records");
 
     // Reset data using hooks (preserving workout templates)
     // Note: Add reset methods to hooks if needed for complete data reset
@@ -866,6 +1034,9 @@ const Index = () => {
     setSearchTerm("");
     setFilterCategory("all");
     setFilterType("all");
+
+    // Reset achievements
+    resetAchievements();
 
     toast({
       title: "Data Reset Complete",
@@ -946,24 +1117,22 @@ const Index = () => {
 
         // Import workout history
         if (data.workoutHistory && Array.isArray(data.workoutHistory)) {
-          for (const entry of data.workoutHistory) {
-            if (entry.name && entry.duration) {
-              try {
-                // Workout tracking now handled by workout sessions
-                importedCount++;
-              } catch (error) {
-                console.error(
-                  `Failed to import workout history: ${entry.name}`,
-                  error
-                );
-              }
-            }
-          }
+          setWorkoutHistoryRecords(data.workoutHistory);
+          localStorage.setItem(
+            "workout-history",
+            JSON.stringify(data.workoutHistory)
+          );
+          importedCount += data.workoutHistory.length;
         }
 
         // Import personal records (stored locally only)
         if (data.personalRecords && typeof data.personalRecords === "object") {
           setPersonalRecords(data.personalRecords);
+          localStorage.setItem(
+            "personal-records",
+            JSON.stringify(data.personalRecords)
+          );
+          importedCount += Object.keys(data.personalRecords).length;
         }
 
         if (importedCount > 0) {
@@ -1118,6 +1287,23 @@ const Index = () => {
                                   Edit Workout
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
+                                  onClick={async () => {
+                                    const workout = workoutTemplates.find(
+                                      (t) => t.name === name
+                                    );
+                                    if (workout) {
+                                      await duplicateWorkout(workout.id);
+                                      toast({
+                                        title: "Workout Duplicated",
+                                        description: `${name} has been duplicated.`,
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Copy className="w-4 h-4 mr-2" />
+                                  Duplicate Workout
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
                                   onClick={() => {
                                     console.log("Delete clicked for:", name);
                                     setWorkoutToDelete(name);
@@ -1264,6 +1450,23 @@ const Index = () => {
                               Edit Workout
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              onClick={async () => {
+                                const workout = workoutTemplates.find(
+                                  (t) => t.name === name
+                                );
+                                if (workout) {
+                                  await duplicateWorkout(workout.id);
+                                  toast({
+                                    title: "Workout Duplicated",
+                                    description: `${name} has been duplicated.`,
+                                  });
+                                }
+                              }}
+                            >
+                              <Copy className="w-4 h-4 mr-2" />
+                              Duplicate Workout
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={() => {
                                 console.log("Delete clicked for:", name);
                                 setWorkoutToDelete(name);
@@ -1308,6 +1511,12 @@ const Index = () => {
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(new Date(year, month, i));
     }
+
+    // Pad to always have 42 cells (6 rows × 7 days) for consistent square sizing
+    while (days.length < 42) {
+      days.push(null);
+    }
+
     return days;
   };
 
@@ -1521,7 +1730,7 @@ const Index = () => {
                 }
               }}
               onStartWorkout={startWorkout}
-              workoutHistory={workoutHistory}
+              workoutHistory={workoutHistoryRecords}
             />
           </CardContent>
         </Card>
@@ -1600,9 +1809,12 @@ const Index = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-7 mb-6 gap-1">
+          <div className="grid grid-cols-7 mb-6 gap-1 md:gap-2">
             {days.map((day, index) => {
-              if (!day) return <div key={index} className="h-20"></div>;
+              if (!day)
+                return (
+                  <div key={index} className="h-20 md:aspect-square"></div>
+                );
 
               const dateKey = formatDateKey(day);
               const workout = schedule[dateKey];
@@ -1619,7 +1831,7 @@ const Index = () => {
                     handleCalendarRightClick(e, day, workout)
                   }
                   className={`
-                    h-20 p-2 rounded-lg
+                    h-20 md:aspect-square md:h-auto p-2 rounded-lg
                     border flex flex-col items-center justify-center transition-all hover:shadow-card relative
                     ${
                       isToday
@@ -1637,8 +1849,8 @@ const Index = () => {
                     {day.getDate()}
                   </div>
                   {workout && (
-                    <div className="mt-1 w-full flex justify-center">
-                      <div className="text-xs bg-accent/20 text-accent rounded px-1 py-0.5 truncate">
+                    <div className="mt-1 w-full flex justify-center px-1">
+                      <div className="text-xs bg-accent/20 text-accent rounded px-1 py-0.5 truncate max-w-full overflow-hidden whitespace-nowrap">
                         {workout}
                       </div>
                     </div>
@@ -1992,18 +2204,18 @@ const Index = () => {
         setCurrentView={setCurrentView}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
-        exportData={exportData}
-        importData={importData}
-        resetAllData={resetAllData}
         onProgressClick={() => navigate("/progress")}
+        onProfileClick={() => navigate("/profile")}
       />
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 py-8">
         {currentView === "dashboard" && (
           <Dashboard
-            workoutHistory={[]} // ✅ Empty array until workout sessions implemented
+            workoutHistory={workoutHistoryRecords}
             personalRecords={personalRecords}
             progressData={progressData}
+            achievements={achievements}
+            stats={calculateUserStats()}
           />
         )}
         {currentView === "schedule" && <CalendarView />}
@@ -2303,6 +2515,18 @@ const Index = () => {
         onUnschedule={handleUnscheduleFromContext}
         workoutName={contextMenu.workoutName}
       />
+
+      {/* Achievement Unlock Notification with Confetti */}
+      {currentAchievement && (
+        <AchievementUnlockNotification
+          achievement={currentAchievement}
+          show={showAchievementNotification}
+          onClose={() => {
+            setShowAchievementNotification(false);
+            setCurrentAchievement(null);
+          }}
+        />
+      )}
     </div>
   );
 };

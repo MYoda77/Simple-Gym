@@ -10,18 +10,25 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { WorkoutRecord, ProgressData } from "@/types/gym";
+import { Achievement } from "@/types/progress";
+import { UserStats } from "@/utils/achievementSystem";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardAchievementShowcase } from "./AchievementComponents";
 
 interface DashboardProps {
   workoutHistory: WorkoutRecord[];
   personalRecords: Record<string, number>;
   progressData: ProgressData[];
+  achievements: Achievement[];
+  stats: UserStats;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
   workoutHistory,
   personalRecords,
   progressData,
+  achievements,
+  stats,
 }) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -218,6 +225,9 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Achievement Showcase */}
+      <DashboardAchievementShowcase achievements={achievements} stats={stats} />
     </div>
   );
 };
