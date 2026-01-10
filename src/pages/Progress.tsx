@@ -8,6 +8,9 @@ import { ProgressPhotos } from "@/components/progress/ProgressPhotos";
 import { RecentActivity } from "@/components/progress/RecentActivity";
 import { QuickAdd } from "@/components/progress/QuickAdd";
 import { LogWeightDialog } from "@/components/progress/LogWeightDialog";
+import { WorkoutHeatmap } from "@/components/progress/WorkoutHeatmap";
+import { WorkoutAnalytics } from "@/components/progress/WorkoutAnalytics";
+import { ProgressiveOverload } from "@/components/progress/ProgressiveOverload";
 import {
   Stat,
   Achievement,
@@ -16,6 +19,7 @@ import {
   ProgressData,
   WeightLog,
 } from "@/types/progress";
+import { WorkoutRecord } from "@/types/gym";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -97,6 +101,12 @@ const Progress = () => {
   >(() => {
     const saved = localStorage.getItem("personal-records");
     return saved ? JSON.parse(saved) : {};
+  });
+
+  // Workout history for heatmap
+  const [workoutHistory, setWorkoutHistory] = useState<WorkoutRecord[]>(() => {
+    const saved = localStorage.getItem("workout-history");
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [progressData, setProgressData] = useState<ProgressData>(() => {
@@ -461,6 +471,15 @@ const Progress = () => {
         <div className="px-2 sm:px-4 py-4 space-y-6">
           <KeyStats stats={stats} />
           <ProgressCharts data={progressData} />
+          <WorkoutHeatmap workoutHistory={workoutHistory} />
+          <WorkoutAnalytics
+            workoutHistory={workoutHistory}
+            personalRecords={personalRecords}
+          />
+          <ProgressiveOverload
+            workoutHistory={workoutHistory}
+            personalRecords={personalRecords}
+          />
 
           {/* Personal Records Section */}
           {Object.keys(personalRecords).length > 0 && (
