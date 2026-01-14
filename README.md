@@ -2,7 +2,7 @@
 
 ## Project info
 
-**Developer**: Coast (@coast_dev)
+**Developer**: CodeGoat
 **Description**: A modern gym management and workout tracking application built with React, TypeScript, and PocketBase.
 
 ## How can I edit this code?
