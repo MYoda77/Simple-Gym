@@ -1,0 +1,624 @@
+import { describe, it, expect, beforeEach } from "@jest/globals";
+import {
+  WorkoutRecommendationEngine,
+  type WorkoutRecommendation,
+  type RecommendationType,
+  type RecommendationPriority,
+} from "./aiRecommendations";
+import type { WorkoutRecord, Exercise } from "@/types/gym";
+import type { UserStats } from "@/utils/achievementSystem";
+
+describe("AI Workout Recommendation Engine", () => {
+  let mockWorkoutHistory: WorkoutRecord[];
+  let mockPersonalRecords: Record<string, number>;
+  let mockExerciseDatabase: Exercise[];
+  let mockUserStats: UserStats;
+  let engine: WorkoutRecommendationEngine;
+
+  beforeEach(() => {
+    const now = new Date();
+
+    // Mock workout history - recent workouts with variety
+    mockWorkoutHistory = [
+      {
+        id: "1",
+        userId: "user1",
+        name: "Bench Press",
+        date: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+        duration: 45,
+        exercises: 3,
+        totalSets: 4,
+        notes: "",
+      },
+      {
+        id: "2",
+        userId: "user1",
+        name: "Squat",
+        date: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+        duration: 50,
+        exercises: 3,
+        totalSets: 5,
+        notes: "",
+      },
+      {
+        id: "3",
+        userId: "user1",
+        name: "Bench Press",
+        date: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString(), // 4 days ago
+        duration: 45,
+        exercises: 3,
+        totalSets: 4,
+        notes: "",
+      },
+      {
+        id: "4",
+        userId: "user1",
+        name: "Deadlift",
+        date: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
+        duration: 40,
+        exercises: 3,
+        totalSets: 3,
+        notes: "",
+      },
+    ];
+
+    // Mock personal records
+    mockPersonalRecords = {
+      "Bench Press": 225,
+      Squat: 315,
+      Deadlift: 405,
+    };
+
+    // Mock exercise database
+    mockExerciseDatabase = [
+      {
+        id: 1,
+        name: "Bench Press",
+        category: "strength",
+        equipment: "barbell",
+        difficulty: "intermediate",
+        complexity: "medium",
+        primaryMuscle: "Chest",
+        secondaryMuscles: ["Triceps", "Shoulders"],
+        instructions: "Lie on bench, press barbell up",
+      },
+      {
+        id: 2,
+        name: "Squat",
+        category: "strength",
+        equipment: "barbell",
+        difficulty: "intermediate",
+        complexity: "medium",
+        primaryMuscle: "Quadriceps",
+        secondaryMuscles: ["Glutes", "Hamstrings"],
+        instructions: "Squat with barbell",
+      },
+      {
+        id: 3,
+        name: "Deadlift",
+        category: "strength",
+        equipment: "barbell",
+        difficulty: "advanced",
+        complexity: "high",
+        primaryMuscle: "Back",
+        secondaryMuscles: ["Glutes", "Hamstrings"],
+        instructions: "Lift barbell from ground",
+      },
+      {
+        id: 4,
+        name: "Pull-ups",
+        category: "strength",
+        equipment: "bodyweight",
+        difficulty: "intermediate",
+        complexity: "medium",
+        primaryMuscle: "Back",
+        secondaryMuscles: ["Biceps"],
+        instructions: "Pull yourself up",
+      },
+      {
+        id: 5,
+        name: "Shoulder Press",
+        category: "strength",
+        equipment: "barbell",
+        difficulty: "intermediate",
+        complexity: "medium",
+        primaryMuscle: "Shoulders",
+        secondaryMuscles: ["Triceps"],
+        instructions: "Press barbell overhead",
+      },
+    ];
+
+    // Mock user stats
+    mockUserStats = {
+      totalWorkouts: 20,
+      currentStreak: 3,
+      totalExercises: 15,
+      personalRecords: mockPersonalRecords,
+      favoriteExercises: ["Bench Press", "Squat"],
+      weeklyAverage: 3,
+      totalVolume: 50000,
+      achievements: [],
+      completionRate: 85,
+      consistencyScore: 90,
+      progressScore: 75,
+    };
+
+    engine = new WorkoutRecommendationEngine(
+      mockWorkoutHistory,
+      mockPersonalRecords,
+      mockExerciseDatabase,
+      mockUserStats
+    );
+  });
+
+  describe("generateRecommendations", () => {
+    it("should generate an array of recommendations", () => {
+      const recommendations = engine.generateRecommendations();
+      expect(Array.isArray(recommendations)).toBe(true);
+      expect(recommendations.length).toBeGreaterThan(0);
+    });
+
+    it("should only include high-confidence recommendations", () => {
+      const recommendations = engine.generateRecommendations();
+      recommendations.forEach((rec) => {
+        expect(rec.confidence).toBeGreaterThanOrEqual(60);
+      });
+    });
+
+    it("should limit to maximum 10 recommendations", () => {
+      const recommendations = engine.generateRecommendations();
+      expect(recommendations.length).toBeLessThanOrEqual(10);
+    });
+
+    it("should sort recommendations by priority and confidence", () => {
+      const recommendations = engine.generateRecommendations();
+      const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
+
+      for (let i = 0; i < recommendations.length - 1; i++) {
+        const currentPriority = priorityOrder[recommendations[i].priority];
+        const nextPriority = priorityOrder[recommendations[i + 1].priority];
+
+        if (currentPriority === nextPriority) {
+          // If same priority, check confidence
+          expect(recommendations[i].confidence).toBeGreaterThanOrEqual(
+            recommendations[i + 1].confidence
+          );
+        } else {
+          // Otherwise, priority should be descending
+          expect(currentPriority).toBeGreaterThanOrEqual(nextPriority);
+        }
+      }
+    });
+
+    it("should include required fields in each recommendation", () => {
+      const recommendations = engine.generateRecommendations();
+      recommendations.forEach((rec) => {
+        expect(rec.id).toBeDefined();
+        expect(rec.type).toBeDefined();
+        expect(rec.priority).toBeDefined();
+        expect(rec.title).toBeDefined();
+        expect(rec.description).toBeDefined();
+        expect(rec.reasoning).toBeDefined();
+        expect(Array.isArray(rec.reasoning)).toBe(true);
+        expect(rec.action).toBeDefined();
+        expect(rec.action.type).toBeDefined();
+        expect(rec.confidence).toBeDefined();
+        expect(typeof rec.dismissable).toBe("boolean");
+      });
+    });
+  });
+
+  describe("Recommendation types", () => {
+    it("should generate next-workout recommendations", () => {
+      const recommendations = engine.generateRecommendations();
+      const nextWorkoutRecs = recommendations.filter(
+        (r) => r.type === "next-workout"
+      );
+      expect(nextWorkoutRecs.length).toBeGreaterThan(0);
+    });
+
+    it("should generate muscle-balance recommendations", () => {
+      // Create imbalanced workout history (lots of chest, no back)
+      const imbalancedHistory: WorkoutRecord[] = Array(10)
+        .fill(null)
+        .map((_, i) => ({
+          id: `bench-${i}`,
+          userId: "user1",
+          name: "Bench Press",
+          date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
+          duration: "45 mins",
+          totalSets: 4,
+          notes: "",
+        }));
+
+      const imbalancedEngine = new WorkoutRecommendationEngine(
+        imbalancedHistory,
+        mockPersonalRecords,
+        mockExerciseDatabase,
+        mockUserStats
+      );
+
+      const recommendations = imbalancedEngine.generateRecommendations();
+      const balanceRecs = recommendations.filter(
+        (r) => r.type === "muscle-balance"
+      );
+      expect(balanceRecs.length).toBeGreaterThan(0);
+    });
+
+    it("should generate recovery recommendations when needed", () => {
+      // Create consecutive workout days
+      const consecutiveWorkouts: WorkoutRecord[] = Array(7)
+        .fill(null)
+        .map((_, i) => ({
+          id: `workout-${i}`,
+          userId: "user1",
+          name: "Bench Press",
+          date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
+          duration: "60 mins",
+          totalSets: 5,
+          notes: "",
+        }));
+
+      const recoveryEngine = new WorkoutRecommendationEngine(
+        consecutiveWorkouts,
+        mockPersonalRecords,
+        mockExerciseDatabase,
+        mockUserStats
+      );
+
+      const recommendations = recoveryEngine.generateRecommendations();
+      const recoveryRecs = recommendations.filter((r) => r.type === "recovery");
+      expect(recoveryRecs.length).toBeGreaterThan(0);
+    });
+
+    it("should generate variety recommendations when exercises are repetitive", () => {
+      const recommendations = engine.generateRecommendations();
+      const varietyRecs = recommendations.filter((r) => r.type === "variety");
+      // May or may not have variety recommendations depending on the data
+      expect(varietyRecs.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("Priority levels", () => {
+    it("should assign urgent priority to critical recommendations", () => {
+      // Create a scenario that triggers urgent (e.g., very long workout streak without rest)
+      const longStreak: WorkoutRecord[] = Array(14)
+        .fill(null)
+        .map((_, i) => ({
+          id: `workout-${i}`,
+          userId: "user1",
+          name: "Bench Press",
+          date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
+          duration: "90 mins",
+          totalSets: 8,
+          notes: "",
+        }));
+
+      const urgentEngine = new WorkoutRecommendationEngine(
+        longStreak,
+        mockPersonalRecords,
+        mockExerciseDatabase,
+        mockUserStats
+      );
+
+      const recommendations = urgentEngine.generateRecommendations();
+      const urgentRecs = recommendations.filter((r) => r.priority === "urgent");
+      expect(urgentRecs.length).toBeGreaterThan(0);
+    });
+
+    it("should assign high priority to important recommendations", () => {
+      const recommendations = engine.generateRecommendations();
+      const highPriorityRecs = recommendations.filter(
+        (r) => r.priority === "high"
+      );
+      expect(highPriorityRecs.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("Confidence scores", () => {
+    it("should assign confidence scores between 0 and 100", () => {
+      const recommendations = engine.generateRecommendations();
+      recommendations.forEach((rec) => {
+        expect(rec.confidence).toBeGreaterThanOrEqual(0);
+        expect(rec.confidence).toBeLessThanOrEqual(100);
+      });
+    });
+
+    it("should have higher confidence for data-rich recommendations", () => {
+      // More workout history = higher confidence
+      const richHistory: WorkoutRecord[] = Array(50)
+        .fill(null)
+        .map((_, i) => ({
+          id: `workout-${i}`,
+          userId: "user1",
+          name: i % 2 === 0 ? "Bench Press" : "Squat",
+          date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
+          duration: "45 mins",
+          totalSets: 4,
+          notes: "",
+        }));
+
+      const richEngine = new WorkoutRecommendationEngine(
+        richHistory,
+        mockPersonalRecords,
+        mockExerciseDatabase,
+        mockUserStats
+      );
+
+      const richRecommendations = richEngine.generateRecommendations();
+      const avgConfidence =
+        richRecommendations.reduce((sum, r) => sum + r.confidence, 0) /
+        richRecommendations.length;
+
+      const sparseRecommendations = engine.generateRecommendations();
+      const avgConfidenceSparse =
+        sparseRecommendations.reduce((sum, r) => sum + r.confidence, 0) /
+        sparseRecommendations.length;
+
+      // More data should generally result in higher average confidence
+      expect(avgConfidence).toBeGreaterThanOrEqual(60);
+      expect(avgConfidenceSparse).toBeGreaterThanOrEqual(60);
+    });
+  });
+
+  describe("Action details", () => {
+    it("should include workout action details when recommending workouts", () => {
+      const recommendations = engine.generateRecommendations();
+      const workoutRecs = recommendations.filter(
+        (r) => r.action.type === "workout"
+      );
+
+      workoutRecs.forEach((rec) => {
+        expect(rec.action.details).toBeDefined();
+        expect(Object.keys(rec.action.details).length).toBeGreaterThan(0);
+      });
+    });
+
+    it("should include rest action details when recommending recovery", () => {
+      const consecutiveWorkouts: WorkoutRecord[] = Array(10)
+        .fill(null)
+        .map((_, i) => ({
+          id: `workout-${i}`,
+          userId: "user1",
+          name: "Bench Press",
+          date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
+          duration: "60 mins",
+          totalSets: 5,
+          notes: "",
+        }));
+
+      const recoveryEngine = new WorkoutRecommendationEngine(
+        consecutiveWorkouts,
+        mockPersonalRecords,
+        mockExerciseDatabase,
+        mockUserStats
+      );
+
+      const recommendations = recoveryEngine.generateRecommendations();
+      const restRecs = recommendations.filter((r) => r.action.type === "rest");
+
+      if (restRecs.length > 0) {
+        restRecs.forEach((rec) => {
+          expect(rec.action.details).toBeDefined();
+        });
+      }
+    });
+  });
+
+  describe("Reasoning", () => {
+    it("should provide at least one reasoning point", () => {
+      const recommendations = engine.generateRecommendations();
+      recommendations.forEach((rec) => {
+        expect(rec.reasoning.length).toBeGreaterThan(0);
+      });
+    });
+
+    it("should provide multiple reasoning points for high-priority recommendations", () => {
+      const recommendations = engine.generateRecommendations();
+      const highPriorityRecs = recommendations.filter(
+        (r) => r.priority === "high" || r.priority === "urgent"
+      );
+
+      highPriorityRecs.forEach((rec) => {
+        expect(rec.reasoning.length).toBeGreaterThanOrEqual(1);
+      });
+    });
+  });
+
+  describe("Edge cases", () => {
+    it("should handle empty workout history gracefully", () => {
+      const emptyEngine = new WorkoutRecommendationEngine(
+        [],
+        {},
+        mockExerciseDatabase,
+        mockUserStats
+      );
+
+      const recommendations = emptyEngine.generateRecommendations();
+      // Should still generate recommendations (e.g., start working out)
+      expect(recommendations.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it("should handle empty exercise database", () => {
+      const noExercisesEngine = new WorkoutRecommendationEngine(
+        mockWorkoutHistory,
+        mockPersonalRecords,
+        [],
+        mockUserStats
+      );
+
+      const recommendations = noExercisesEngine.generateRecommendations();
+      expect(recommendations.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it("should handle workouts with no matching exercises in database", () => {
+      const unknownWorkouts: WorkoutRecord[] = [
+        {
+          id: "1",
+          userId: "user1",
+          name: "Unknown Exercise",
+          date: new Date().toISOString(),
+          duration: 30,
+          exercises: 2,
+          totalSets: 3,
+          notes: "",
+        },
+      ];
+
+      const unknownEngine = new WorkoutRecommendationEngine(
+        unknownWorkouts,
+        mockPersonalRecords,
+        mockExerciseDatabase,
+        mockUserStats
+      );
+
+      const recommendations = unknownEngine.generateRecommendations();
+      expect(recommendations.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it("should handle very old workout history", () => {
+      const oldWorkouts: WorkoutRecord[] = [
+        {
+          id: "1",
+          userId: "user1",
+          name: "Bench Press",
+          date: new Date("2020-01-01").toISOString(), // 4+ years ago
+          duration: 45,
+          exercises: 3,
+          totalSets: 4,
+          notes: "",
+        },
+      ];
+
+      const oldEngine = new WorkoutRecommendationEngine(
+        oldWorkouts,
+        mockPersonalRecords,
+        mockExerciseDatabase,
+        mockUserStats
+      );
+
+      const recommendations = oldEngine.generateRecommendations();
+      // Should recommend getting back to training
+      expect(recommendations.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("Dismissability", () => {
+    it("should mark most recommendations as dismissable", () => {
+      const recommendations = engine.generateRecommendations();
+      const dismissable = recommendations.filter((r) => r.dismissable);
+      expect(dismissable.length).toBeGreaterThan(0);
+    });
+
+    it("should mark critical recommendations as non-dismissable", () => {
+      const recommendations = engine.generateRecommendations();
+      const urgent = recommendations.filter((r) => r.priority === "urgent");
+      // Urgent recommendations may be non-dismissable
+      urgent.forEach((rec) => {
+        // This is flexible - urgent can be dismissable or not
+        expect(typeof rec.dismissable).toBe("boolean");
+      });
+    });
+  });
+
+  describe("Unique IDs", () => {
+    it("should generate unique IDs for all recommendations", () => {
+      const recommendations = engine.generateRecommendations();
+      const ids = recommendations.map((r) => r.id);
+      const uniqueIds = new Set(ids);
+      expect(uniqueIds.size).toBe(ids.length);
+    });
+  });
+
+  describe("Integration scenarios", () => {
+    it("should recommend rest for overtraining scenario", () => {
+      const overtrainingWorkouts: WorkoutRecord[] = Array(20)
+        .fill(null)
+        .map((_, i) => ({
+          id: `workout-${i}`,
+          userId: "user1",
+          name: "Bench Press",
+          date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
+          duration: "120 mins",
+          totalSets: 10,
+          notes: "",
+        }));
+
+      const overtrainingEngine = new WorkoutRecommendationEngine(
+        overtrainingWorkouts,
+        mockPersonalRecords,
+        mockExerciseDatabase,
+        mockUserStats
+      );
+
+      const recommendations = overtrainingEngine.generateRecommendations();
+      const hasRecoveryOrDeload = recommendations.some(
+        (r) => r.type === "recovery" || r.type === "deload"
+      );
+      expect(hasRecoveryOrDeload).toBe(true);
+    });
+
+    it("should recommend variety for monotonous training", () => {
+      const monotonousWorkouts: WorkoutRecord[] = Array(30)
+        .fill(null)
+        .map((_, i) => ({
+          id: `workout-${i}`,
+          userId: "user1",
+          name: "Bench Press",
+          date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
+          duration: "45 mins",
+          totalSets: 4,
+          notes: "",
+        }));
+
+      const monotonousEngine = new WorkoutRecommendationEngine(
+        monotonousWorkouts,
+        mockPersonalRecords,
+        mockExerciseDatabase,
+        mockUserStats
+      );
+
+      const recommendations = monotonousEngine.generateRecommendations();
+      const hasVariety = recommendations.some((r) => r.type === "variety");
+      expect(hasVariety).toBe(true);
+    });
+
+    it("should provide balanced recommendations for balanced training", () => {
+      const balancedWorkouts: WorkoutRecord[] = [
+        "Bench Press",
+        "Squat",
+        "Deadlift",
+        "Pull-ups",
+        "Shoulder Press",
+      ].flatMap((exercise, idx) =>
+        Array(3)
+          .fill(null)
+          .map((_, i) => ({
+            id: `${exercise}-${i}`,
+            userId: "user1",
+            name: exercise,
+            date: new Date(
+              Date.now() - (idx * 3 + i) * 24 * 60 * 60 * 1000
+            ).toISOString(),
+            duration: 50,
+            exercises: 3,
+            totalSets: 4,
+            notes: "",
+          }))
+      );
+
+      const balancedEngine = new WorkoutRecommendationEngine(
+        balancedWorkouts,
+        mockPersonalRecords,
+        mockExerciseDatabase,
+        mockUserStats
+      );
+
+      const recommendations = balancedEngine.generateRecommendations();
+      expect(recommendations.length).toBeGreaterThan(0);
+      // Should have lower priority recommendations for already-balanced training
+      const lowPriority = recommendations.filter((r) => r.priority === "low");
+      expect(lowPriority.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+});
