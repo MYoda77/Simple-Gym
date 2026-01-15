@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
-import type { Achievement } from "@/types/progress";
+import { Achievement } from "@/utils/achievementSystem";
 import {
   getAchievementRarity,
   calculateTotalPoints,
@@ -25,28 +25,36 @@ describe("Achievement Rarity System", () => {
       title: "First Workout",
       description: "Complete your first workout",
       icon: "🎯",
-      date: "2024-01-01",
+      unlockedAt: "2024-01-01",
+      category: "workout",
+      condition: () => true,
     },
     {
       id: "workouts-10",
       title: "10 Workouts",
       description: "Complete 10 workouts",
       icon: "💪",
-      date: "2024-01-15",
+      unlockedAt: "2024-01-15",
+      category: "workout",
+      condition: () => true,
     },
     {
       id: "workouts-50",
       title: "50 Workouts",
       description: "Complete 50 workouts",
       icon: "🔥",
-      date: "2024-02-01",
+      unlockedAt: "2024-02-01",
+      category: "workout",
+      condition: () => true,
     },
     {
       id: "workouts-100",
       title: "100 Workouts",
       description: "Complete 100 workouts",
       icon: "⭐",
-      date: "2024-03-01",
+      unlockedAt: "2024-03-01",
+      category: "workout",
+      condition: () => true,
     },
   ];
 
@@ -226,14 +234,18 @@ describe("Achievement Rarity System", () => {
           title: "First Workout",
           description: "Test",
           icon: "🎯",
-          date: "2024-01-01",
+          unlockedAt: "2024-01-01",
+          category: "workout",
+          condition: () => true,
         },
         {
           id: "first-pr",
           title: "First PR",
           description: "Test",
           icon: "💪",
-          date: "2024-01-15",
+          unlockedAt: "2024-01-15",
+          category: "pr",
+          condition: () => true,
         },
       ];
       const sorted = sortByRarity(achievements);
@@ -309,15 +321,41 @@ describe("Achievement Rarity System", () => {
     it("should return null if all legendary achievements are unlocked", () => {
       // Mock all legendary achievements as unlocked
       const allLegendary: Achievement[] = [
-        { id: "workouts-100", title: "", description: "", icon: "", date: "" },
-        { id: "streak-30", title: "", description: "", icon: "", date: "" },
-        { id: "variety-25", title: "", description: "", icon: "", date: "" },
+        {
+          id: "workouts-100",
+          title: "",
+          description: "",
+          icon: "",
+          unlockedAt: "",
+          category: "workout",
+          condition: () => true,
+        },
+        {
+          id: "streak-30",
+          title: "",
+          description: "",
+          icon: "",
+          unlockedAt: "",
+          category: "streak",
+          condition: () => true,
+        },
+        {
+          id: "variety-25",
+          title: "",
+          description: "",
+          icon: "",
+          unlockedAt: "",
+          category: "special",
+          condition: () => true,
+        },
         {
           id: "ultimate-dedication",
           title: "",
           description: "",
           icon: "",
-          date: "",
+          unlockedAt: "",
+          category: "special",
+          condition: () => true,
         },
       ];
       const next = getNextLegendary(allLegendary);
@@ -387,7 +425,9 @@ describe("Achievement Rarity System", () => {
           title: "Test",
           description: "Test",
           icon: "🎯",
-          date: "",
+          unlockedAt: "",
+          category: "workout",
+          condition: () => true,
         },
       ];
       const sorted = sortByRarity(achievements);

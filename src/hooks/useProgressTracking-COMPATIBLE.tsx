@@ -157,12 +157,6 @@ export const useProgressTracking = () => {
       const completedAt = new Date();
       const startedAt = new Date(completedAt.getTime() - duration * 60 * 1000);
 
-      // Start a workout session (without custom start time)
-      const session = await workoutSessionsAPI.start(
-        workoutTemplate.id,
-        undefined
-      );
-
       // Create exercise data for the session
       const exercisesCompleted = Array.from(
         { length: exercisesCount },
@@ -181,35 +175,41 @@ export const useProgressTracking = () => {
         })
       );
 
-      // Complete the session and manually update started_at and duration
-      const newEntry = await workoutSessionsAPI.complete(
-        session.id,
-        exercisesCompleted,
-        `${workoutName}: ${exercisesCount} exercises, ${totalSets} sets`
-      );
+      // Directly insert the workout session with custom times
+      const { supabase } = await import("@/lib/supabase-config");
+      const { data: newEntry, error: insertError } = await supabase
+        .from("workout_sessions")
+        .insert({
+          workout_id: workoutTemplate.id,
+          user_id: user.id,
+          started_at: startedAt.toISOString(),
+          completed_at: completedAt.toISOString(),
+          duration_minutes: duration,
+          exercises_completed: exercisesCompleted,
+          notes: `${workoutName}: ${exercisesCount} exercises, ${totalSets} sets`,
+        })
+        .select()
+        .single();
 
-      // Manually update the started_at and duration to reflect actual workout time
+      if (insertError) {
+        console.error("Insert error:", insertError);
+        throw insertError;
+      }
+
       if (newEntry) {
-        // Update the session with correct started_at and duration
-        const { data: updatedEntry } = await (
-          await import("@/lib/supabase-config")
-        ).supabase
-          .from("workout_sessions")
-          .update({
-            started_at: startedAt.toISOString(),
-            duration_minutes: duration,
-          })
-          .eq("id", session.id)
-          .select()
-          .single();
+        console.log("✅ Workout logged successfully:", {
+          name: workoutName,
+          duration: duration,
+          sets: totalSets,
+          entry: newEntry,
+        });
 
-        const finalEntry = updatedEntry || newEntry;
-        setWorkoutHistory((prev) => [finalEntry, ...prev]);
+        setWorkoutHistory((prev) => [newEntry, ...prev]);
         toast({
           title: "Success",
-          description: "Workout logged successfully",
+          description: `Logged ${workoutName}: ${duration}min, ${totalSets} sets`,
         });
-        return finalEntry;
+        return newEntry;
       }
       throw new Error("Failed to log workout");
     } catch (error) {
